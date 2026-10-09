@@ -93,7 +93,7 @@ test('browser simulation: actual list panel extracts links with zero mode saves 
     assert.equal(result.rows.every(r=>r.result==='DONE'&&r.finalMode==='CAWI'&&r.link),true);
     // Reproduce the user's case: inspect again after a job is already saved/restored in the panel.
     await page.getByRole('button',{name:'Cek data halaman',exact:true}).click();
-    const diagnostic=page.getByRole('status');assert.equal(await diagnostic.isVisible(),true);
+    const diagnostic=page.locator('#fasih-cawi-bot #diagnostics');assert.equal(await diagnostic.isVisible(),true);
     assert.match(await diagnostic.textContent(),/Kartu terbaca: 2/);
     assert.equal(await page.evaluate(()=>sim.links),2);
     await page.locator('#fasih-cawi-bot #prefix').fill('bad');

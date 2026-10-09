@@ -10,16 +10,16 @@
   shadow.innerHTML=`<style>
     *{box-sizing:border-box}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #cbd5e1;border-radius:7px;padding:9px;background:white;color:#183042}button:disabled{opacity:.45;cursor:default}.primary{background:#ee7918;border-color:#ee7918;color:white;font-weight:650}.panel{width:360px;max-height:calc(100vh - 150px);overflow:auto;background:#fff;border:1px solid #ccd7e0;border-radius:12px;box-shadow:0 8px 35px #16314630}.head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#fff3e8;border-bottom:1px solid #e2e8f0}.head strong{font-size:16px}.body{padding:16px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:12px;font-weight:650}input,select{padding:8px;border:1px solid #ccd7e0;border-radius:6px;width:100%;background:white;color:#183042}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.muted{font-size:12px;line-height:1.5;color:#526b7c}.notice{font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border:1px solid #e2e8f0;background:#f7fafc;padding:10px;border-radius:7px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.stat{padding:8px;background:#f1f6fa;border-radius:6px;font-size:11px}.stat b{display:block;font-size:19px;color:#244a64}.hidden{display:none}.mini{box-shadow:0 4px 15px #16314620;background:#fff3e8}.meter{height:6px;background:#edf2f6;border-radius:6px;overflow:hidden}.meter div{height:100%;background:#ee7918;width:0}a{color:#244a64}
     .working{width:280px}.working .body{padding:10px;gap:8px}.working .body>*{display:none}.working .body>#state,.working .body>#notice,.working .body>#reset,.working .body>#resetConfirm:not(.hidden){display:block}.working .body>#controls,.working .body>.stats{display:grid}.working .head{padding:10px}.working .head strong{font-size:13px}
-  </style><button class="mini hidden" id="mini">FULX · v0.2.2</button><section class="panel" id="panel">
-    <div class="head"><strong>FULX · v0.2.2</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
-    <div class="body"><div class="muted">LIST · ekstrak unique link · hanya OPEN dan CAWI<br>Kolom opsional yang tidak tampil boleh kosong.</div>
+  </style><button class="mini hidden" id="mini">FULX · v0.2.3</button><section class="panel" id="panel">
+    <div class="head"><strong>FULX · v0.2.3</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
+    <div class="body"><div class="notice" id="notice" role="status" aria-live="polite">Mulai dengan Cek data halaman. Untuk mode server, buka URL proyek lalu jalankan Inventaris ke server dari komputer Koordinator.</div><div class="muted">LIST · ekstrak unique link · hanya OPEN dan CAWI<br>Kolom opsional yang tidak tampil boleh kosong.</div>
     <label>Wilayah<select id="region"><option value="Palu">Kota Palu</option><option value="Sulteng">Seluruh Sulawesi Tengah</option></select></label>
     <div class="row"><label>Awalan kode wilayah<input id="prefix" value="7271" inputmode="numeric" maxlength="16"></label><label>Domain link survei<input id="linkHost" value="esurvey.bps.go.id"></label></div>
     <div class="muted">Terapkan filter wilayah di FASIH. Awalan kode memeriksa bahwa setiap baris masih berada dalam cakupan.</div>
     <div class="row"><label>Jeda aksi (detik)<input id="actionDelay" type="number" min="0.05" max="60" step="0.05" value="0.50"></label><label>Jeda antar data (detik)<input id="nextDelay" type="number" min="0" max="300" step="0.05" value="1.00"></label></div>
     <button id="saveTiming">Simpan jeda</button><div class="muted">Jeda sebelum aksi/pembacaan URL. Jika FASIH belum siap, waktu tunggu bisa lebih lama. Atur saat proses berhenti; berlaku saat mulai/lanjut/ulang gagal.</div>
     <div class="notice" id="serverState">Mode lokal · server belum dihubungkan.</div>
-    <button id="serverConfig">Pengaturan server</button><div class="row"><button id="serverInventory">Inventaris ke server</button><button id="serverStart" class="primary">Mulai tugas server</button></div><button id="serverSync">Sinkronkan hasil tertunda</button>
+    <div class="row"><button id="serverConfig">Pengaturan server</button><button id="serverOpenProject">Buka URL proyek</button></div><div class="row"><button id="serverInventory">Inventaris ke server</button><button id="serverStart" class="primary">Mulai tugas server</button></div><button id="serverSync">Sinkronkan hasil tertunda</button>
     <div class="muted">Server membagi paket antar komputer. Mode lokal di bawah hanya tersedia saat server tidak terhubung.</div>
     <div class="row"><button id="diagnose">Cek data halaman</button><button id="pilot" class="primary">Pilot 5 data</button></div>
     <div class="notice hidden" id="diagnostics" role="status" aria-live="polite"></div>
@@ -27,7 +27,7 @@
     <div class="stats"><div class="stat">Inventaris<b id="total">0</b></div><div class="stat">Selesai<b id="done">0</b></div><div class="stat">Gagal<b id="error">0</b></div></div>
     <div class="meter"><div id="bar"></div></div><div class="muted" id="state">Belum ada proses.</div>
     <div class="row" id="controls"><button id="pause">Jeda</button><button id="resume">Lanjutkan</button><button id="stop">Hentikan</button><button id="retry">Coba ulang gagal</button></div>
-    <button id="export">Ekspor Excel / backup</button><div class="notice" id="notice">Mulai dengan Cek data halaman. Pilot mengambil link maksimal 5 assignment OPEN yang sudah CAWI pada halaman pertama.</div>
+    <button id="export">Ekspor Excel / backup</button>
     <button id="reset">Reset full</button><div class="notice hidden" id="resetConfirm">Reset full menghapus semua progres, link, hasil, koneksi server dan pengaturan lokal ekstensi. Hasil tertunda harus disinkronkan dahulu. Unduh Excel/backup jika diperlukan. Data pusat dan FASIH tetap tersedia.<div class="row"><button id="resetCancel">Batal</button><button id="resetApply">Hapus semua data lokal</button></div></div>
     <div class="muted">Biarkan tab ini aktif saat berjalan. Progres disimpan lokal pada ekstensi. Setelah reload yang tidak direncanakan, tekan Lanjutkan.</div>
     </div></section>`;
@@ -55,7 +55,7 @@
     if(job.notice) show(job.notice+(lastFailure&&!job.notice.includes(lastFailure)?'\nKegagalan terakhir: '+lastFailure:''));
     else show(activity||(job.phase==='INVENTORY'?`Mengambil kartu list. Halaman ${F.context(location.href).page}.`:`Mengambil unique link halaman ${F.context(location.href).page}.`));
     const active=runner.running||busy||resetting;
-    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverSync']) $(id).disabled=active;
+    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverOpenProject','serverSync']) $(id).disabled=active;
     $('export').disabled=!job;
   }
   const runner=new (F.ServerRunner||F.Runner)(adapter,send,update);
@@ -107,12 +107,14 @@
   }
   function run(action, feedback=show) { return async()=> {
     if(busy||resetting) return; busy=true;
+    for(const id of ['serverInventory','serverStart','serverOpenProject'])$(id).disabled=true;
     let error='';
     try { await action(); } catch(e) { error=e.message; }
     finally {
       busy=false;
       if(loaded) update({job:loaded.job,counts:F.totals(loaded.rows)});
-      if(error)feedback(error);
+      else for(const id of ['serverInventory','serverStart','serverOpenProject'])$(id).disabled=runner.running||resetting;
+      if(error){feedback(error);if(feedback===show)$('notice').scrollIntoView?.({block:'nearest'});}
     }
   }; }
   $('region').onchange=()=>{$('prefix').value=$('region').value==='Palu'?'7271':'72';};
@@ -126,21 +128,33 @@
   $('serverConfig').onclick=run(()=>send({type:'OPEN_SERVER_CONFIG'}));
   $('serverSync').onclick=run(async()=>{const r=await send({type:'REMOTE_FLUSH'});showDiagnostic(r.synced+' hasil tersinkron ke server.');});
   async function launchServer(mode){
+    show(mode==='INVENTORY'?'Memeriksa koneksi dan URL proyek sebelum inventaris…':'Memeriksa koneksi sebelum mengambil tugas server…');
+    $('notice').scrollIntoView?.({block:'nearest'});
     const info=await send({type:'REMOTE_INFO'});
     if(mode==='INVENTORY'&&info.worker.role!=='COORDINATOR')throw new Error('Inventaris awal memakai token Koordinator.');
     const opts={region:info.campaign.name,prefix:info.campaign.prefix,linkHost:info.campaign.linkHost,pilot:false,limit:0,...timingValues(),server:{mode,campaignId:info.campaign.id,workerId:info.worker.id,generation:info.campaign.generation}};
-    if(F.context(location.href).signature!==F.context(info.campaign.sourceUrl).signature)throw new Error('URL/pencarian berbeda dari proyek dashboard. Buka URL proyek, gunakan 100 kartu, dan filter yang sesuai.');
+    if(F.context(location.href).signature!==F.context(info.campaign.sourceUrl).signature){
+      const current=new URL(location.href),expected=new URL(info.campaign.sourceUrl);
+      throw new Error('Inventaris/tugas belum dimulai: URL atau pencarian berbeda dari proyek dashboard.\nPencarian tab: '+JSON.stringify(current.searchParams.get('search')||'')+'\nPencarian proyek: '+JSON.stringify(expected.searchParams.get('search')||'')+'\nHuruf besar/kecil, spasi, dan parameter lain harus sama. Klik Buka URL proyek, periksa filter wilayah, lalu coba kembali.');
+    }
     const prior=await readLatest();
     if(prior?.job.options.server&&prior.job.phase!=='FINISHED'&&prior.job.status!=='COMPLETE')throw new Error('Proses server sebelumnya belum selesai. Gunakan Lanjutkan/Coba ulang gagal untuk mempertahankan kepemilikan tugas.');
     await send({type:'SET_SETTINGS',settings:F.timings(opts)});
     const job=await send({type:'CREATE',options:opts});await runner.start(job);
   }
   $('serverInventory').onclick=run(()=>launchServer('INVENTORY'));$('serverStart').onclick=run(()=>launchServer('WORK'));
+  $('serverOpenProject').onclick=run(async()=>{
+    show('Membuka URL proyek server…');
+    if(runner.running)throw new Error('Jeda proses dahulu sebelum membuka URL proyek.');
+    const info=await send({type:'REMOTE_INFO'});
+    F.context(info.campaign.sourceUrl);
+    location.assign(info.campaign.sourceUrl);
+  });
   async function refreshServer(){
     try{const c=await send({type:'GET_SERVER_SETTINGS'});if(!c){$('serverState').textContent='Mode lokal · server belum dihubungkan.';return;}
       if(runner.running){$('serverState').textContent=c.workerName+' · '+c.campaignName+' · '+c.outboxCount+' hasil belum tersinkron.';return;}
       const info=await send({type:'REMOTE_INFO'}),n=info.counts;
-      $('serverState').textContent=info.worker.name+' · '+info.campaign.name+'\nPusat: '+n.done+'/'+n.total+' selesai · '+n.error+' gagal · '+n.review+' perlu pemeriksaan · '+c.outboxCount+' belum tersinkron.';
+      $('serverState').textContent=info.worker.name+' · '+info.campaign.name+'\nPeran: '+(info.worker.role==='COORDINATOR'?'Koordinator':'Pelaksana')+' · Awalan proyek: '+info.campaign.prefix+'\nPusat: '+n.done+'/'+n.total+' selesai · '+n.error+' gagal · '+n.review+' perlu pemeriksaan · '+c.outboxCount+' belum tersinkron.';
     }catch(e){$('serverState').textContent='Server: '+e.message;}
   }
   // Read-only status polling; no assignment actions occur here.
@@ -152,7 +166,7 @@
     $('bar').style.width='0%';$('state').textContent='Belum ada proses.';
     $('diagnostics').textContent='';$('diagnostics').classList.add('hidden');$('resetConfirm').classList.add('hidden');
     $('panel').classList.remove('working');host.style.right='16px';host.style.left='auto';host.style.top='126px';
-    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverSync'])$(id).disabled=false;
+    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverOpenProject','serverSync'])$(id).disabled=false;
     $('serverState').textContent='Mode lokal · server belum dihubungkan.';
     $('export').disabled=true;show('Reset full selesai. Semua data lokal dihapus; jeda kembali ke 0,50 dan 1,00 detik.');
   }

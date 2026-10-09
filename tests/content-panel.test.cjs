@@ -81,3 +81,34 @@ test('custom timing is restored, saved, validated and reset with all local panel
     assert.match(p.getElementById('notice').textContent,/Reset full selesai/);
   }finally{s.dom.window.close();}
 });
+
+test('server inventory shows a pending message immediately and surfaces exact query mismatch before creating any job',async()=>{
+  const s=await setup();try{
+    const w=s.dom.window,p=s.panel,original=w.chrome.runtime.sendMessage;
+    let resolveInfo;
+    w.chrome.runtime.sendMessage=msg=>msg.type==='REMOTE_INFO'?new Promise(resolve=>{resolveInfo=resolve;}):original(msg);
+    p.getElementById('serverInventory').click();
+    assert.match(p.getElementById('notice').textContent,/Memeriksa koneksi dan URL proyek/);
+    assert.equal(p.getElementById('serverInventory').disabled,true);
+    resolveInfo({ok:true,value:{worker:{id:'worker',role:'COORDINATOR'},campaign:{id:'campaign',generation:1,name:'Sulteng',prefix:'72',linkHost:'esurvey.bps.go.id',sourceUrl:url+'&search=-+EC+-'}}});
+    await new Promise(r=>setTimeout(r,0));
+    const notice=p.getElementById('notice');
+    assert.match(notice.textContent,/Inventaris\/tugas belum dimulai/);
+    assert.match(notice.textContent,/Pencarian proyek: "- EC -"/);
+    assert.match(notice.textContent,/Buka URL proyek/);
+    assert.equal(p.querySelector('.body').firstElementChild,notice);
+    assert.equal(notice.getAttribute('aria-live'),'polite');
+    assert.equal(p.getElementById('serverInventory').disabled,false);
+    assert.equal(s.calls.includes('CREATE'),false);
+  }finally{s.dom.window.close();}
+});
+
+test('a worker token cannot import and its role error stays visible instead of the restored job notice',async()=>{
+  const s=await setup();try{
+    const original=s.dom.window.chrome.runtime.sendMessage;
+    s.dom.window.chrome.runtime.sendMessage=msg=>msg.type==='REMOTE_INFO'?Promise.resolve({ok:true,value:{worker:{role:'WORKER'},campaign:{sourceUrl:url}}}):original(msg);
+    await s.click('serverInventory');
+    assert.match(s.panel.getElementById('notice').textContent,/token Koordinator/);
+    assert.equal(s.calls.includes('CREATE'),false);
+  }finally{s.dom.window.close();}
+});

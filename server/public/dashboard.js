@@ -53,7 +53,7 @@ async function exportAll(json){if(!project||!snapshot)return;const buttons=[$('e
   const c=snapshot.campaign,job={id:c.id,options:{region:c.name,prefix:c.prefix,linkHost:c.linkHost,pilot:false},context:{scope:c.scope,url:c.sourceUrl,view:'list'},processingView:'list',status:c.state==='PAUSED'?'PAUSED':'RUNNING',phase:'PROCESS',inventoryComplete:!['CREATED','IMPORTING'].includes(c.state),notice:'Ekspor gabungan server; snapshot progres selama pengunduhan.'};
   for(const r of rows)r.fields['Komputer']=r.workerName||'';
   const base='FULX-'+c.id.slice(0,8)+'-'+Fasih.localDate();
-  if(json)download(JSON.stringify({version:'0.2.2',exportedAt:new Date().toISOString(),campaign:c,job,rows},null,2),'application/json',base+'.json');
+  if(json)download(JSON.stringify({version:'0.2.3',exportedAt:new Date().toISOString(),campaign:c,job,rows},null,2),'application/json',base+'.json');
   else download(FasihXlsx.makeWorkbook(FasihXlsx.exportSheets(job,rows)),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',base+'.xlsx');
   message('Unduhan siap: '+fmt(rows.length)+' baris.');
 }catch(e){message(e.message);}finally{buttons.forEach(b=>b.disabled=false);}}
