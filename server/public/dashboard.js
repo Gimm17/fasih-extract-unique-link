@@ -13,8 +13,10 @@ async function api(action,data={}){
     if(!response.ok||!r.ok){if(response.status===401&&action!=='login')showLogin();throw new Error(r.error||'Permintaan gagal.');}return r.value;
   }finally{clearTimeout(timer);}
 }
-function showLogin(){$('app').classList.add('hidden');$('login').classList.remove('hidden');csrf='';}
-async function enter(session){csrf=session.csrf;$('password').value='';$('login').classList.add('hidden');$('app').classList.remove('hidden');await projects();await refresh();}
+function passwordVisibility(visible){const button=$('togglePassword');$('password').type=visible?'text':'password';button.setAttribute('aria-pressed',String(visible));button.setAttribute('aria-label',visible?'Sembunyikan password':'Tampilkan password');button.title=button.getAttribute('aria-label');button.querySelector('.eye-show').classList.toggle('hidden',visible);button.querySelector('.eye-hide').classList.toggle('hidden',!visible);}
+$('togglePassword').onclick=()=>passwordVisibility($('password').type==='password');
+function showLogin(){passwordVisibility(false);$('app').classList.add('hidden');$('login').classList.remove('hidden');csrf='';}
+async function enter(session){csrf=session.csrf;$('password').value='';passwordVisibility(false);$('login').classList.add('hidden');$('app').classList.remove('hidden');await projects();await refresh();}
 async function projects(selectId){const items=await api('campaigns');$('campaign').replaceChildren();for(const c of items){const o=node('option',c.name);o.value=c.id;$('campaign').append(o);}project=selectId||project||items[0]?.id||'';if(!items.some(c=>c.id===project))project=items[0]?.id||'';$('campaign').value=project;if(!project){tab('setup');message('Buat proyek dan token komputer untuk memulai.');}}
 function tab(name){activeTab=name;for(const id of ['monitor','territories','results','setup'])$(id).classList.toggle('hidden',id!==name);document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$('pageTitle').textContent={monitor:'Monitor pekerjaan',territories:'Progres wilayah',results:'Data & hasil',setup:'Kelola proyek'}[name];if(name==='results')loadRows().catch(e=>message(e.message));}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>tab(b.dataset.tab));
@@ -82,7 +84,7 @@ async function exportAll(json){if(!project||!snapshot)return;const buttons=[$('e
   for(const r of rows)r.fields['Komputer']=r.workerName||'';
   const base='FULX-'+c.id.slice(0,8)+'-'+Fasih.localDate();
   const territories=(await api('overview',{campaignId:project})).territories;
-  if(json)download(JSON.stringify({version:'0.3.5',exportedAt:new Date().toISOString(),campaign:c,territories,job,rows},null,2),'application/json',base+'.json');
+  if(json)download(JSON.stringify({version:'0.3.6',exportedAt:new Date().toISOString(),campaign:c,territories,job,rows},null,2),'application/json',base+'.json');
   else download(FasihXlsx.makeWorkbook([...FasihXlsx.exportSheets(job,rows),...territorySheets(territories,rows)]),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',base+'.xlsx');
   message('Unduhan siap: '+fmt(rows.length)+' baris.');
 }catch(e){message(e.message);}finally{buttons.forEach(b=>b.disabled=false);}}

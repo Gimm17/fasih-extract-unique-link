@@ -1,6 +1,12 @@
-# FULX v0.3.5 — pembaruan wilayah Kota Palu
+# FULX v0.3.6 — pembaruan wilayah Kota Palu
 
 FASIH membatasi hasil satu filter hingga 1.000 assignment. Rilis ini menemukan wilayah dari dropdown FASIH, menginventarisasi per kecamatan/desa, lalu memakai filter yang sama untuk ekstraksi. Target awal Kota Palu tetap **11.649 identitas unik**. Target tidak diturunkan otomatis.
+
+## Perubahan v0.3.6: tombol mata pada login
+
+Kolom password login memiliki tombol mata untuk menampilkan atau menyembunyikan karakter yang diketik. Awalnya password tersembunyi; tombol dapat digunakan dengan mouse atau keyboard dan tidak mengirim formulir login. Password kembali tersembunyi setelah login/keluar. Ini tidak memulihkan password yang lupa atau menampilkan hash database.
+
+Pembaruan hosting cukup `git pull --ff-only`, lalu muat ulang halaman login. Tidak ada perubahan database atau token. Paket ekstensi hanya disamakan versinya; alur inventaris dan ekstraksi tetap seperti v0.3.5.
 
 ## Perubahan v0.3.5: pemecahan bersyarat ke SLS/SUBSLS
 
@@ -16,7 +22,7 @@ Pesan **Koordinator lain memiliki inventaris** dapat muncul setelah mengganti to
 
 Mulai v0.3.3, Koordinator pengganti dapat melanjutkan inventaris wilayah jika pemilik lama sudah **dinonaktifkan** melalui dashboard. Server mengganti pemilik dalam transaksi tanpa menghapus master, halaman inventaris, hasil, atau link. Pemilik yang masih aktif tetap dilindungi; status OFFLINE saja tidak cukup untuk mengambil alih. Token lama yang diaktifkan kembali tidak boleh menulis inventaris setelah kepemilikan berpindah.
 
-Untuk kasus ini: lakukan `git pull --ff-only` di hosting, muat ulang dashboard, periksa ID pemilik inventaris di **Kelola proyek** dan tanda **Pemilik inventaris** di tabel komputer. Jika pemilik sudah nonaktif, gunakan token Koordinator yang sekarang terhubung dan klik **Lanjutkan** pada ekstensi. Jika pemilik masih aktif, hentikan proses lama dan nonaktifkan ID pemilik itu terlebih dahulu. Tidak perlu reset data, membuat proyek baru, atau membuat token tambahan. ZIP v0.3.5 juga tersedia melalui tombol dashboard. Tidak ada perubahan skema database.
+Untuk kasus ini: lakukan `git pull --ff-only` di hosting, muat ulang dashboard, periksa ID pemilik inventaris di **Kelola proyek** dan tanda **Pemilik inventaris** di tabel komputer. Jika pemilik sudah nonaktif, gunakan token Koordinator yang sekarang terhubung dan klik **Lanjutkan** pada ekstensi. Jika pemilik masih aktif, hentikan proses lama dan nonaktifkan ID pemilik itu terlebih dahulu. Tidak perlu reset data, membuat proyek baru, atau membuat token tambahan. ZIP v0.3.6 juga tersedia melalui tombol dashboard. Tidak ada perubahan skema database.
 
 ## Perbaikan v0.3.2: dropdown Kecamatan tidak ditemukan
 
@@ -55,9 +61,9 @@ Migrasi menambah tabel wilayah, partisi, pemetaan halaman, lokasi identitas, ser
 ## 3. Perbarui kelima ekstensi
 
 1. Muat ulang dashboard dengan **Ctrl+Shift+R**.
-2. Klik **Unduh ekstensi v0.3.5 (ZIP)**.
+2. Klik **Unduh ekstensi v0.3.6 (ZIP)**.
 3. Ekstrak ZIP dan salin isinya ke folder ekstensi yang selama ini dipasang. Timpa file lama dengan versi baru, lalu klik **Reload** di `chrome://extensions`.
-4. Muat ulang tab FASIH. Panel harus menampilkan **FULX v0.3.5**.
+4. Muat ulang tab FASIH. Panel harus menampilkan **FULX v0.3.6**.
 
 Menggunakan folder pemasangan yang sama mempertahankan identitas ekstensi dan penyimpanan lokal. Memasang folder berbeda dapat membuat ekstensi baru dengan penyimpanan berbeda. Gunakan satu ekstensi aktif dan satu token berbeda untuk setiap komputer.
 

@@ -1,3 +1,9 @@
+# FULX v0.3.6 — tampilkan/sembunyikan password login
+
+Kolom password login memakai tombol mata di sisi kanan. Tombol bertipe button agar tidak mengirim form, dilengkapi label Tampilkan/Sembunyikan password, aria-controls, aria-pressed, dan indikator fokus keyboard. Nilai input tetap sama saat tipe password/text diganti. Password kembali tersembunyi setelah login berhasil atau halaman login ditampilkan kembali saat logout/sesi berakhir. Tidak ada perubahan autentikasi, database, token, atau alur wilayah.
+
+Validasi: pemeriksaan sintaks JS/PHP lulus. Smoke test Chrome lokal memeriksa klik mata, Space/Enter pada tombol, nilai yang tidak berubah, tidak ada request login saat toggle, pengosongan/remasking setelah login, remasking saat logout, serta tombol berada di dalam input tanpa overflow pada lebar desktop 1440 dan ponsel 375. Tampilan ponsel diperiksa dari screenshot; seluruh credential smoke test fiktif. Paket ekstensi hanya disamakan versi menjadi v0.3.6. Suite 89 tes wilayah/ekstraksi yang lulus pada v0.3.5 tidak diulang karena alurnya tidak berubah. Hosting diperbarui melalui Git pull, lalu refresh halaman login.
+
 # FULX v0.3.5 — pemecahan bersyarat desa → SLS → SUBSLS
 
 Arahan terbaru mengizinkan pemecahan ke SLS hanya setelah desa bernama mencapai 1.000 kartu, lalu ke SUBSLS hanya jika SLS mencapai 1.000. Opsi `-` dan kode seluruhnya nol tetap dilewati pada semua tingkat. Daun di bawah batas selesai tanpa membuka dropdown anak, dengan filter anak lama dikosongkan melalui X. SUBSLS yang tetap mencapai 1.000 atau daftar anak valid kosong dijeda; tidak ada klaim inventaris lengkap.

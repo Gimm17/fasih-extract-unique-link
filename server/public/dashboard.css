@@ -3,3 +3,5 @@
 @media(max-width:800px){.sidebar-bottom{display:block;margin:0;padding:0;border:0;font-size:0}.sidebar-bottom .dot,.sidebar-bottom small{display:none}.sidebar-bottom button{margin:0;font-size:11px}}
 
 .button-link{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);padding:9px 15px;border-radius:8px;font-weight:600;text-decoration:none;white-space:nowrap}.button-link.primary{border-color:var(--orange);color:white}.button-link:focus-visible{outline:2px solid var(--orange);outline-offset:3px}.header-right{flex-wrap:wrap}
+
+.login-password{display:grid;gap:6px;font-size:12px;font-weight:650}.password-field{position:relative}.password-field input{padding-right:52px}.password-toggle{position:absolute;right:1px;top:1px;bottom:1px;width:44px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:var(--muted)}.password-toggle:hover{color:var(--ink);background:#eef3f6}.password-toggle:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
