@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 final class TerritoryService extends Service {
     protected function publicCampaign(array $c): array {
-        return parent::publicCampaign($c)+['inventoryMode'=>$c['inventory_mode']??'LEGACY','catalogComplete'=>(bool)($c['catalog_complete']??false),'minimumProtocol'=>($c['inventory_mode']??'LEGACY')==='TERRITORY'?3:1];
+        $owner=$c['import_worker']?$this->one('SELECT id,name,enabled FROM workers WHERE id=? AND campaign_id=?',[$c['import_worker'],$c['id']]):null;
+        if($owner)$owner['enabled']=(bool)$owner['enabled'];
+        return parent::publicCampaign($c)+['inventoryMode'=>$c['inventory_mode']??'LEGACY','catalogComplete'=>(bool)($c['catalog_complete']??false),'minimumProtocol'=>($c['inventory_mode']??'LEGACY')==='TERRITORY'?3:1,'inventoryOwner'=>$owner];
     }
     public function createCampaign(array $input): array {
         if(($input['territoryMode']??false)&&($input['prefix']??'')!=='7271')throw new ApiError('Mode wilayah awal memakai awalan Kota Palu 7271.');
@@ -45,8 +47,16 @@ final class TerritoryService extends Service {
     }
     private function importer(array $w): array {
         $c=$this->campaign($w['campaign_id'],true);
+        $this->enabledCoordinator($w);
         if($w['role']!=='COORDINATOR'||$c['import_worker']!==$w['id']||$c['inventory_mode']!=='TERRITORY'||$c['state']!=='IMPORTING')throw new ApiError('Inventaris wilayah tidak aktif untuk koordinator ini.',409,'IMPORT');
         return $c;
+    }
+    private function enabledCoordinator(array $w): void {
+        // Recheck after acquiring the campaign lock: an authenticated request
+        // can have waited behind the admin action that disabled its token.
+        $current=$this->one('SELECT role,enabled FROM workers WHERE id=? AND campaign_id=?',[$w['id'],$w['campaign_id']]);
+        if(!$current||!$current['enabled'])throw new ApiError('Token komputer sudah dinonaktifkan.',401,'AUTH');
+        if($current['role']!=='COORDINATOR')throw new ApiError('Gunakan token Koordinator untuk inventaris.',403,'ROLE');
     }
     private function part(string $campaign,string $id): array {
         $p=$this->one('SELECT * FROM partitions WHERE campaign_id=? AND id=? FOR UPDATE',[$campaign,$id]);
@@ -57,15 +67,22 @@ final class TerritoryService extends Service {
             $id=$w['campaign_id'];
             if($action==='geo_begin') {
                 $c=$this->campaign($id,true);
+                $this->enabledCoordinator($w);
                 if($w['role']!=='COORDINATOR'||$c['inventory_mode']!=='TERRITORY')throw new ApiError('Aktifkan mode wilayah dan gunakan token Koordinator.',403,'ROLE');
-                if($c['import_worker']&&$c['import_worker']!==$w['id'])throw new ApiError('Koordinator lain memiliki inventaris.',409,'IMPORT');
                 if(in_array($c['state'],['READY','RUNNING','PAUSED'],true))return ['finished'=>true,'catalogComplete'=>true,'partitions'=>$this->partitionList($id)];
                 if($c['state']!=='CREATED'&&$c['state']!=='IMPORTING')throw new ApiError('Inventaris sudah ditutup.',409,'IMPORT');
                 $ctx=self::context((string)($in['url']??''));$expected=json_decode($c['context_json'],true);
                 if($ctx!=$expected)throw new ApiError('URL awal inventaris harus sama dengan URL proyek.',409,'CONTEXT');
+                $recovered=false;
+                if($c['import_worker']&&$c['import_worker']!==$w['id']){
+                    $owner=$this->one('SELECT id,name,enabled FROM workers WHERE id=? AND campaign_id=?',[$c['import_worker'],$id]);
+                    if($owner&&$owner['enabled'])throw new ApiError('Inventaris dimiliki '.$owner['name'].' (ID '.substr($owner['id'],0,8).'). Gunakan token pemilik, atau hentikan prosesnya lalu nonaktifkan pemilik di dashboard sebelum memakai Koordinator pengganti.',409,'IMPORT');
+                    $recovered=true;
+                    $this->event($id,$w['id'],'IMPORT_RECOVERY','Inventaris dilanjutkan oleh '.$w['name'].' (ID '.substr($w['id'],0,8).') dari pemilik nonaktif/tidak tersedia (ID '.substr($c['import_worker'],0,8).'). Master, halaman, hasil, dan link dipertahankan.');
+                }
                 $this->touch($w,(string)$in['session'],'IMPORTING','Menemukan wilayah Kota Palu');
-                $this->query("UPDATE campaigns SET state='IMPORTING',import_worker=? WHERE id=?",[$w['id'],$id]);
-                return ['partitions'=>$this->partitionList($id),'catalogComplete'=>(bool)$c['catalog_complete']];
+                $this->query("UPDATE campaigns SET state='IMPORTING',import_worker=?,updated_at=UTC_TIMESTAMP(6) WHERE id=?",[$w['id'],$id]);
+                return ['partitions'=>$this->partitionList($id),'catalogComplete'=>(bool)$c['catalog_complete'],'recovered'=>$recovered];
             }
             if($action==='geo_claim')return $this->claimTerritory($w,$in);
             $c=$this->importer($w);

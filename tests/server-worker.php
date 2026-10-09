@@ -15,7 +15,7 @@ try{
         $q=$db->prepare('UPDATE pages SET lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 SECOND) WHERE campaign_id=? AND page_no=?');$q->execute([$in['campaignId'],$in['page']]);
         $q=$db->prepare('UPDATE partitions p JOIN territory_pages g ON g.campaign_id=p.campaign_id AND g.partition_id=p.id SET p.lease_until=DATE_SUB(UTC_TIMESTAMP(),INTERVAL 10 SECOND) WHERE p.campaign_id=? AND g.page_no=?');$q->execute([$in['campaignId'],$in['page']]);$value=true;
     }else{
-        migrateTerritories($db);$w=$s->worker($in['token']);$value=match($in['action']){'geo_claim'=>$s->territory($w,'geo_claim',$in),'claim'=>$s->claim($w,$in),'checkpoint'=>$s->checkpoint($w,$in),'heartbeat'=>$s->heartbeat($w,$in),default=>throw new RuntimeException('Unknown fixture action')};
+        migrateTerritories($db);$w=$s->worker($in['token']);$value=match($in['action']){'geo_begin'=>$s->territory($w,'geo_begin',$in),'geo_claim'=>$s->territory($w,'geo_claim',$in),'claim'=>$s->claim($w,$in),'checkpoint'=>$s->checkpoint($w,$in),'heartbeat'=>$s->heartbeat($w,$in),default=>throw new RuntimeException('Unknown fixture action')};
     }
     echo json_encode(['ok'=>true,'value'=>$value],JSON_THROW_ON_ERROR);
 }catch(ApiError $e){echo json_encode(['ok'=>false,'error'=>$e->getMessage(),'code'=>$e->kind]);exit(2);}

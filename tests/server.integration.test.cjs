@@ -123,7 +123,7 @@ test('browser + live PHP backend: worker extracts assigned links; dashboard rend
   await dashboard.locator('#campaign').selectOption(fixture.campaignId);await dashboard.waitForFunction(()=>document.querySelectorAll('#workers tr').length===5);
   await dashboard.waitForTimeout(500);assert.equal(await dashboard.locator('#progressBar').evaluate(e=>e.style.width),'0%');
   await dashboard.screenshot({path:path.join(root,'test-output/dashboard-desktop.png'),fullPage:true});
-  await dashboard.getByRole('button',{name:/Kelola proyek/}).click();await dashboard.locator('#newExpected').fill('123');await dashboard.waitForTimeout(3200);assert.equal(await dashboard.locator('#newExpected').inputValue(),'123');
+  await dashboard.getByRole('button',{name:/Kelola proyek/}).click();assert.ok((await dashboard.locator('#inventoryOwner').textContent()).includes(fixture.worker.id.slice(0,8)));assert.ok((await dashboard.locator('#workers').textContent()).includes('Pemilik inventaris'));await dashboard.locator('#newExpected').fill('123');await dashboard.waitForTimeout(3200);assert.equal(await dashboard.locator('#newExpected').inputValue(),'123');
   await dashboard.getByRole('button',{name:/Data & hasil/}).click();await dashboard.locator('#search').fill('CONTOH');await dashboard.locator('#searchApply').click();await dashboard.waitForFunction(()=>document.querySelectorAll('#rows tr').length===20);
   assert.equal(await dashboard.locator('#rows').locator('script').count(),0);assert.ok((await dashboard.locator('#rows').textContent()).includes('<CONTOH>'));
   const download=dashboard.waitForEvent('download');await dashboard.locator('#excel').click();const file=await download;assert.match(file.suggestedFilename(),/\.xlsx$/);await file.saveAs(path.join(root,'test-output/server-browser-export.xlsx'));
@@ -171,6 +171,39 @@ test('territory migration preserves links, deduplicates cross-filter rows, check
   const nextOwned={protocol:3,page:retryPack.page,claimToken:retryPack.claimToken,session:'geo-work-0'},pending=retryPack.rows.find(r=>r.result==='PENDING');assert.equal((await w.api('begin_record',{...nextOwned,key:pending.key})).ok,true);assert.equal((await w.api('checkpoint',{...nextOwned,record:{...pending,result:'ERROR',error:'Retry fixture'}})).ok,true);assert.equal((await w.api('close_page',{...nextOwned,complete:true})).ok,true);assert.equal((await admin('overview',{campaignId:c.id})).value.territories.partitions.find(p=>p.id===first.partitionId).state,'DONE');
   assert.equal((await w.api('retry_own',{protocol:3,session:'geo-work-0'})).ok,true);const again=(await w.api('geo_claim',{protocol:3,session:'geo-work-0'})).value;assert.notEqual(again.claimToken,retryPack.claimToken);assert.equal(again.rows.find(r=>r.key===pending.key).result,'PENDING');assert.equal((await w.api('checkpoint',{...nextOwned,record:pending})).status,409);
 });
+
+test('a disabled inventory owner is replaced atomically without losing catalog, pages, or DONE links; active owners and old requests remain fenced',
+ {skip:!fs.existsSync(php)||!fs.existsSync(config),timeout:45000},async()=>{
+  const admin=client();await admin('login',{username:'localadmin',password:'local-fixture-password-2026'});
+  const source='https://fasih-sm.bps.go.id/app/surveys/territory-owner/period/data?page=1&perPage=100&view=list';
+  const c=(await admin('create_campaign',{name:'Inventory owner recovery',url:source,prefix:'7271',expectedTotal:1})).value;
+  const old=(await admin('create_worker',{campaignId:c.id,name:'Same coordinator name',role:'COORDINATOR'})).value,oldApi=client(old.token);
+  const f=fields('7271000000000000 - EC - 1 - 99901','CAWI'),row={key:F.key(f['Kode Identitas']),fields:f};
+  await oldApi('import_begin',{url:source,prefix:'7271',filterStamp:''});await oldApi('import_page',{page:1,rows:[row]});await oldApi('import_finish',{lastPage:1});
+  const pack=(await oldApi('claim',{session:'owner-legacy'})).value,owned={session:'owner-legacy',page:pack.page,claimToken:pack.claimToken},link='https://esurvey.bps.go.id/h/s/owner-link-preserved';
+  await oldApi('begin_record',{...owned,key:row.key});await oldApi('checkpoint',{...owned,record:{...pack.rows[0],result:'DONE',link,stage:'SELESAI'}});await oldApi('close_page',{...owned,complete:true});
+  await admin('enable_territories',{campaignId:c.id});
+  const geoOld=(action,data={})=>oldApi(action,{protocol:3,session:'owner-old',...data});assert.equal((await geoOld('geo_begin',{url:source})).ok,true);
+  await geoOld('geo_filter_stamp',{filterStamp:'["fixed filters"]'});
+  const root=[{level:'PROVINSI',code:'72',name:'SULAWESI TENGAH'},{level:'KABUPATEN/KOTA',code:'71',name:'PALU'},{level:'KECAMATAN',code:'010',name:'PALU BARAT'}];
+  const recipes=['004','005'].map(code=>[...root,{level:'DESA',code,name:'VILLAGE '+code}]);
+  const parts=(await geoOld('geo_catalog',{recipes,complete:true})).value.partitions,filled=parts.find(p=>p.recipe.at(-1).code==='004'),empty=parts.find(p=>p.id!==filled.id);
+  await geoOld('geo_page',{partitionId:filled.id,localPage:1,rows:[row]});await geoOld('geo_finish_partition',{partitionId:filled.id,lastPage:1,boundary:'NEXT_DISABLED'});
+  const replacements=[];for(let i=0;i<2;i++)replacements.push((await admin('create_worker',{campaignId:c.id,name:'Same coordinator name',role:'COORDINATOR'})).value);
+  const replacementApi=client(replacements[0].token),blocked=await replacementApi('geo_begin',{protocol:3,session:'owner-new',url:source});assert.equal(blocked.status,409);assert.ok(blocked.error.includes(old.id.slice(0,8)));
+  await admin('worker_toggle',{campaignId:c.id,workerId:old.id,enabled:false});assert.equal((await geoOld('geo_begin',{url:source})).status,401);
+  const before=(await admin('overview',{campaignId:c.id})).value;assert.equal(before.campaign.inventoryOwner.id,old.id);assert.equal(before.campaign.inventoryOwner.enabled,false);
+  assert.equal((await replacementApi('geo_begin',{protocol:3,session:'owner-new',url:source.replace('/territory-owner/','/wrong-survey/')})).status,409);
+  assert.equal((await admin('overview',{campaignId:c.id})).value.campaign.inventoryOwner.id,old.id);
+  const regular=(await admin('create_worker',{campaignId:c.id,name:'Regular worker',role:'WORKER'})).value;assert.equal((await client(regular.token)('geo_begin',{protocol:3,session:'not-coordinator',url:source})).status,403);
+  const results=await Promise.all(replacements.map((w,i)=>cli({action:'geo_begin',token:w.token,protocol:3,session:'owner-new-'+i,url:source})));
+  assert.equal(results.filter(r=>r.ok).length,1);const win=results.findIndex(r=>r.ok),winner=replacements[win],geo=(action,data={})=>client(winner.token)(action,{protocol:3,session:'owner-new-'+win,...data});
+  assert.equal(results[win].value.recovered,true);assert.equal(results[win].value.catalogComplete,true);assert.equal(results[win].value.partitions.find(p=>p.id===filled.id).state,'VERIFIED');
+  const after=(await admin('overview',{campaignId:c.id})).value;assert.equal(after.campaign.inventoryOwner.id,winner.id);assert.equal(after.campaign.filterStamp,before.campaign.filterStamp);assert.equal(after.campaign.generation,before.campaign.generation);assert.equal(after.counts.done,1);assert.equal(after.events.filter(e=>e.kind==='IMPORT_RECOVERY').length,1);
+  const saved=(await admin('export',{campaignId:c.id,limit:500})).value.rows;assert.equal(saved[0].link,link);assert.equal(saved[0].result,'DONE');
+  await admin('worker_toggle',{campaignId:c.id,workerId:old.id,enabled:true});assert.equal((await geoOld('geo_page',{partitionId:filled.id,localPage:1,rows:[row]})).status,409);assert.equal((await geoOld('geo_begin',{url:source})).status,409);
+  assert.equal((await geo('geo_finish_partition',{partitionId:empty.id,lastPage:0,boundary:'NEXT_DISABLED'})).ok,true);assert.equal((await geo('geo_finish')).ok,true);assert.equal((await geoOld('geo_begin',{url:source})).value.finished,true);
+ });
 
 test('1000-row parent splits to SLS, reconciles parent identities, and never becomes ready with missing coverage or count',
  {skip:!fs.existsSync(php)||!fs.existsSync(config),timeout:45000},async()=>{
