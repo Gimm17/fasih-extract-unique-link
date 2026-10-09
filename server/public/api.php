@@ -8,11 +8,13 @@ try{
     if(strlen($raw)>2*1024*1024)throw new ApiError('Paket terlalu besar.',413,'SIZE');
     $input=json_decode($raw,true,64,JSON_THROW_ON_ERROR);if(!is_array($input))throw new ApiError('JSON tidak valid.');
     $action=(string)($input['action']??'');
-    $workerActions=['worker_info','import_begin','import_page','import_finish','claim','heartbeat','begin_record','checkpoint','close_page','retry_own'];
+    $geoActions=['geo_filter_stamp','geo_begin','geo_catalog','geo_split','geo_page','geo_finish_partition','geo_finish','geo_claim'];
+    $workerActions=[...$geoActions,'worker_info','import_begin','import_page','import_finish','claim','heartbeat','begin_record','checkpoint','close_page','retry_own'];
     if(in_array($action,$workerActions,true)){
         $auth=$_SERVER['HTTP_AUTHORIZATION']??($_SERVER['REDIRECT_HTTP_AUTHORIZATION']??'');
         if(!preg_match('/^Bearer ([a-f0-9]{64})$/',$auth,$m))throw new ApiError('Token komputer diperlukan.',401,'AUTH');
-        $w=$service->worker($m[1]);
+        $w=$service->worker($m[1]);$service->requireProtocol($w,$input,$action);
+        if(in_array($action,$geoActions,true))jsonReply(['ok'=>true,'value'=>$service->territory($w,$action,$input)]);
         $value=match($action){
             'worker_info'=>$service->info($w),'import_begin'=>$service->beginImport($w,$input),'import_page'=>$service->importPage($w,$input),
             'import_finish'=>$service->finishImport($w,$input),'claim'=>$service->claim($w,$input),'heartbeat'=>$service->heartbeat($w,$input),
@@ -47,7 +49,7 @@ try{
         'rows','export'=>['rows'=>$service->rows($campaign,$action==='export'?null:($input['result']??null),null,(int)($input['offset']??0),(int)($input['limit']??100),$action==='export'?'':Service::text($input['search']??''))],
         'create_campaign'=>$service->createCampaign($input),
         'create_worker'=>$service->createWorker($input),
-        'pause','resume','retry','release_review','worker_toggle','reset','expected','edit_campaign'=>$service->adminAction($action,$input),
+        'pause','resume','retry','release_review','worker_toggle','reset','expected','edit_campaign','enable_territories'=>$service->adminAction($action,$input),
         'logout'=>null,'password'=>null,
         default=>throw new ApiError('Perintah tidak dikenal.',404,'ACTION')
     };

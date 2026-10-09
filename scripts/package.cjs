@@ -35,7 +35,7 @@ function walk(base,prefix='') {
   }
 }
 walk(path.join(root,'server'));
-serverFiles.push(['INSTALL.md',new Uint8Array(fs.readFileSync(path.join(root,'INSTALL.md')))],['VERSION.txt',new TextEncoder().encode('FULX '+version+'\n')]);
+serverFiles.push(['UPDATE_WILAYAH.md',new Uint8Array(fs.readFileSync(path.join(root,'UPDATE_WILAYAH.md')))],['IMPLEMENTATION_PLAN_WILAYAH.md',new Uint8Array(fs.readFileSync(path.join(root,'IMPLEMENTATION_PLAN_WILAYAH.md')))],['INSTALL.md',new Uint8Array(fs.readFileSync(path.join(root,'INSTALL.md')))],['VERSION.txt',new TextEncoder().encode('FULX '+version+'\n')]);
 const serverTarget=path.join(root,'dist',`fulx-cpanel-server-v${version}.zip`),serverBytes=Buffer.from(zip(serverFiles));
 if(fs.existsSync(serverTarget)){
   if(!fs.readFileSync(serverTarget).equals(serverBytes))throw new Error(`Paket server v${version} sudah ada dengan isi berbeda. Naikkan versi dahulu.`);

@@ -1,5 +1,7 @@
 # Rencana implementasi ekstraksi unique link FASIH
 
+**Rencana terbaru (9 Oktober 2026):** lihat [IMPLEMENTATION_PLAN_WILAYAH.md](IMPLEMENTATION_PLAN_WILAYAH.md). Karena batas hasil FASIH 1.000 per filter, rencana baru memakai inventaris per desa melalui dropdown wilayah, dimulai dari Kota Palu, dengan progres bertingkat dan pembagian kerja server. Dokumen di bawah menjadi riwayat rancangan sebelumnya.
+
 Tanggal: 8 Oktober 2026
 
 **Arahan terbaru, 9 Oktober 2026, versi 0.1.4:** pusat sudah mengubah seluruh mode ke CAWI. Ekstensi hanya mengambil unique link dari kartu OPEN yang sudah CAWI di view=list. Seluruh langkah perubahan mode, dropdown CAWI, toggle pengiriman, dan save mode dihapus. Arahan ini menggantikan alur konversi pada rencana awal dan keputusan 0.1.3 di bawah.

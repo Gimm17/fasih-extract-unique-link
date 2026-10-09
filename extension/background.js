@@ -91,10 +91,10 @@ async function handle(msg, sender) {
   }
   if (job.owner !== sender.tab.id) throw new Error('Hanya tab pemilik yang dapat mengubah progres.');
   if(msg.type==='REMOTE'){
-    const actions=['import_begin','import_page','import_finish','claim','heartbeat','begin_record','checkpoint','close_page','retry_own'];
+    const actions=['geo_filter_stamp','geo_begin','geo_catalog','geo_split','geo_page','geo_finish_partition','geo_finish','geo_claim','import_begin','import_page','import_finish','claim','heartbeat','begin_record','checkpoint','close_page','retry_own'];
     if(!actions.includes(msg.action)||!job.options.server)throw new Error('Aksi server tidak diizinkan untuk proses ini.');
     const config=await FasihStore.metaGet('server');
-    const data={...msg.data,session:job.id};
+    const data={...msg.data,session:job.id,protocol:3};
     if(msg.action==='checkpoint'){
       const outboxId='outbox:'+job.id+':'+data.record.key;
       await FasihStore.metaPut(outboxId,{url:config?.url,workerTokenHash:config?await tokenHash(config.token):'',data,jobId:job.id});

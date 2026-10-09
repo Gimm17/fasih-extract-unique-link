@@ -4,6 +4,7 @@ const root=path.resolve(__dirname,'..'),php=path.join(root,'.tools/php/php.exe')
 const fixture=path.join(__dirname,'server-worker.php');
 function cli(input){return new Promise((resolve,reject)=>{const p=spawn(php,['-d','extension_dir='+path.join(root,'.tools/php/ext'),'-d','extension=pdo_mysql',fixture],{env:{...process.env,FASIH_CONFIG:config},windowsHide:true});let out='',err='';p.stdout.on('data',s=>out+=s);p.stderr.on('data',s=>err+=s);p.on('exit',()=>{try{resolve(JSON.parse(out));}catch{reject(new Error(err+out));}});p.stdin.end(JSON.stringify(input));});}
 function client(token){let cookie='',csrf='';return async(action,data={})=>{const r=await fetch(base+'/api.php',{method:'POST',headers:{'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{}),...(csrf?{'X-CSRF-Token':csrf}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify({action,...data})});const set=r.headers.get('set-cookie');if(set)cookie=set.split(';')[0];const json=await r.json();if(json.value?.csrf)csrf=json.value.csrf;return {status:r.status,...json};};}
+
 test('PHP/MariaDB integration: five concurrent workers, ownership, review recovery, CSRF, retries and central reset',
  {skip:!fs.existsSync(php)||!fs.existsSync(config),timeout:45000},async()=>{
   await cli({action:'__reset'});
@@ -131,4 +132,59 @@ test('browser + live PHP backend: worker extracts assigned links; dashboard rend
   assert.deepEqual(errors,[]);
   const csrf=await dashboard.evaluate(async()=>{const r=await fetch('api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'pause',campaignId:document.querySelector('#campaign').value})});return r.status;});assert.equal(csrf,403);
  }finally{await browser.close();}
+});
+
+test('territory migration preserves links, deduplicates cross-filter rows, checks zero branches and leases five distinct villages',
+ {skip:!fs.existsSync(php)||!fs.existsSync(config),timeout:45000},async()=>{
+  const admin=client();assert.equal((await admin('login',{username:'localadmin',password:'local-fixture-password-2026'})).ok,true);
+  const source='https://fasih-sm.bps.go.id/app/surveys/territory-integration/period/data?page=1&perPage=100&view=list';
+  const c=(await admin('create_campaign',{name:'Migration + territories',url:source,prefix:'7271',expectedTotal:6,linkHost:'esurvey.bps.go.id'})).value;
+  const workers=[];for(let i=0;i<5;i++){const w=(await admin('create_worker',{campaignId:c.id,name:'Geo PC '+i,role:i?'WORKER':'COORDINATOR'})).value;workers.push({...w,api:client(w.token)});}
+  const legacy=fields('7271000000000000 - EC - 1 - 9000','CAWI'),row={key:F.key(legacy['Kode Identitas']),fields:legacy},w=workers[0];
+  await w.api('import_begin',{url:source,prefix:'7271',filterStamp:''});await w.api('import_page',{page:1,rows:[row]});await admin('expected',{campaignId:c.id,expectedTotal:1});await w.api('import_finish',{lastPage:1});
+  const pack=(await w.api('claim',{session:'legacy-session'})).value,owned={session:'legacy-session',page:pack.page,claimToken:pack.claimToken};await w.api('begin_record',{...owned,key:row.key});
+  const link='https://esurvey.bps.go.id/h/s/legacy-geo-preserved';await w.api('checkpoint',{...owned,record:{...pack.rows[0],result:'DONE',link,stage:'SELESAI'}});await w.api('close_page',{...owned,complete:true});
+  assert.equal((await admin('enable_territories',{campaignId:c.id})).ok,true);assert.equal((await admin('expected',{campaignId:c.id,expectedTotal:6})).ok,true);
+  assert.equal((await w.api('claim',{session:'legacy-session'})).status,409);assert.equal((await w.api('import_begin',{url:source})).status,409);
+  const geo=(action,data={})=>w.api(action,{protocol:3,session:'geo-session',...data});
+  assert.equal((await geo('geo_begin',{url:source})).ok,true);
+  const roots=[{level:'PROVINSI',code:'72',name:'SULAWESI TENGAH'},{level:'KABUPATEN/KOTA',code:'71',name:'PALU'}],district={level:'KECAMATAN',code:'010',name:'PALU BARAT'};
+  const recipes=Array.from({length:5},(_,i)=>[...roots,district,{level:'DESA',code:String(i+1).padStart(3,'0'),name:'DESA UJI '+i}]);recipes.push([...roots,{level:'KECAMATAN',code:'000',name:'-'}]);
+  const catalog=await geo('geo_catalog',{recipes,complete:true});assert.equal(catalog.ok,true,catalog.error);const parts=catalog.value.partitions;
+  for(const p of parts){const i=recipes.findIndex(r=>r.at(-1).code===p.recipe.at(-1).code&&r.length===p.recipe.length);const rows=i===5?[]:[{key:F.key('7271000000000000 - EC - 1 - '+(9100+i)),fields:fields('7271000000000000 - EC - 1 - '+(9100+i),'CAWI')},...(i<2?[row]:[])];
+    if(rows.length){assert.equal((await geo('geo_page',{partitionId:p.id,localPage:1,rows})).ok,true);assert.equal((await geo('geo_page',{partitionId:p.id,localPage:1,rows})).value.reused,true);}
+    assert.equal((await geo('geo_finish_partition',{partitionId:p.id,lastPage:rows.length?1:0,boundary:'NEXT_DISABLED'})).ok,true);
+  }
+  const overview=await admin('overview',{campaignId:c.id});assert.equal(overview.value.territories.unmapped,0);assert.equal(overview.value.counts.total,6);assert.equal(overview.value.territories.duplicates.length,1);
+  assert.equal(overview.value.territories.regionCounts.find(r=>r.total===6).total,6);assert.equal((await geo('geo_finish')).ok,true);
+  assert.equal((await geo('geo_begin',{url:source})).value.finished,true);
+  const packs=await Promise.all(workers.map((w,i)=>cli({action:'geo_claim',token:w.token,session:'geo-work-'+i})));assert.equal(packs.every(p=>p.ok),true,JSON.stringify(packs));assert.equal(new Set(packs.map(p=>p.value.partitionId)).size,5);
+  for(const p of packs){assert.equal(p.value.localPage,1);assert.ok(p.value.recipe.some(r=>r.level==='DESA'));}
+  const exported=(await admin('export',{campaignId:c.id,limit:500})).value.rows;assert.equal(exported.find(r=>r.key===row.key).link,link);assert.equal(exported.find(r=>r.key===row.key).result,'DONE');
+  const first=packs[0].value;assert.equal((await workers[1].api('begin_record',{protocol:3,page:first.page,claimToken:first.claimToken,session:'geo-work-0',key:first.rows.at(-1).key})).status,409);
+  const lease={protocol:3,page:first.page,claimToken:first.claimToken,session:'geo-work-0'};assert.equal((await w.api('heartbeat',lease)).ok,true);
+  assert.equal((await w.api('geo_claim',{protocol:3,session:'other-session'})).status,409);
+  assert.equal((await admin('reset',{campaignId:c.id,confirm:c.name})).status,409);
+  await cli({action:'__expire',campaignId:c.id,page:first.page});const expired=(await admin('overview',{campaignId:c.id})).value;assert.equal(expired.territories.partitions.find(p=>p.id===first.partitionId).state,'REVIEW');assert.equal(expired.packages.find(p=>Number(p.page_no)===first.page).partition_id,first.partitionId);
+  assert.equal((await admin('release_review',{campaignId:c.id,page:first.page,confirm:'REQUEUE'})).ok,true);assert.equal((await w.api('checkpoint',{...lease,record:first.rows[0]})).status,409);
+  const retryPack=(await w.api('geo_claim',{protocol:3,session:'geo-work-0'})).value;assert.equal(retryPack.partitionId,first.partitionId);assert.notEqual(retryPack.claimToken,first.claimToken);
+  const nextOwned={protocol:3,page:retryPack.page,claimToken:retryPack.claimToken,session:'geo-work-0'},pending=retryPack.rows.find(r=>r.result==='PENDING');assert.equal((await w.api('begin_record',{...nextOwned,key:pending.key})).ok,true);assert.equal((await w.api('checkpoint',{...nextOwned,record:{...pending,result:'ERROR',error:'Retry fixture'}})).ok,true);assert.equal((await w.api('close_page',{...nextOwned,complete:true})).ok,true);assert.equal((await admin('overview',{campaignId:c.id})).value.territories.partitions.find(p=>p.id===first.partitionId).state,'DONE');
+  assert.equal((await w.api('retry_own',{protocol:3,session:'geo-work-0'})).ok,true);const again=(await w.api('geo_claim',{protocol:3,session:'geo-work-0'})).value;assert.notEqual(again.claimToken,retryPack.claimToken);assert.equal(again.rows.find(r=>r.key===pending.key).result,'PENDING');assert.equal((await w.api('checkpoint',{...nextOwned,record:pending})).status,409);
+});
+
+test('1000-row parent splits to SLS, reconciles parent identities, and never becomes ready with missing coverage or count',
+ {skip:!fs.existsSync(php)||!fs.existsSync(config),timeout:45000},async()=>{
+  const admin=client();await admin('login',{username:'localadmin',password:'local-fixture-password-2026'});
+  const source='https://fasih-sm.bps.go.id/app/surveys/territory-cap/period/data?page=1&perPage=100&view=list';
+  const c=(await admin('create_campaign',{territoryMode:true,name:'Split 1000',url:source,prefix:'7271',expectedTotal:1001})).value,w=(await admin('create_worker',{campaignId:c.id,name:'Split coordinator',role:'COORDINATOR'})).value;
+  const api=client(w.token),geo=(action,data={})=>api(action,{protocol:3,session:'split-test',...data});await geo('geo_begin',{url:source});
+  const recipe=[{level:'PROVINSI',code:'72',name:'SULAWESI TENGAH'},{level:'KABUPATEN/KOTA',code:'71',name:'PALU'},{level:'KECAMATAN',code:'010',name:'PALU BARAT'},{level:'DESA',code:'004',name:'UJUNA'}];
+  const parent=(await geo('geo_catalog',{recipes:[recipe],complete:true})).value.partitions[0];
+  const all=Array.from({length:1001},(_,i)=>{const f=fields('7271000000000000 - EC - 1 - '+i,'CAWI');return {key:F.key(f['Kode Identitas']),fields:f};});
+  const children=[1,2].map(n=>[...parent.recipe,{level:'SLS',code:'00'+n,name:'SLS '+n}]);
+  const split=await geo('geo_split',{partitionId:parent.id,sampleKeys:all.slice(0,1000).map(r=>r.key),recipes:children});assert.equal(split.ok,true,split.error);
+  const parts=split.value.partitions.filter(p=>p.parent_id===parent.id);
+  assert.equal((await geo('geo_finish_partition',{partitionId:parent.id,lastPage:0,boundary:'NEXT_DISABLED'})).status,400);
+  for(let i=0;i<parts.length;i++){const rows=i===0?all.slice(0,501):all.slice(501);for(let page=1;page<=Math.ceil(rows.length/100);page++)assert.equal((await geo('geo_page',{partitionId:parts[i].id,localPage:page,rows:rows.slice((page-1)*100,page*100)})).ok,true);assert.equal((await geo('geo_finish_partition',{partitionId:parts[i].id,lastPage:Math.ceil(rows.length/100),boundary:'NEXT_DISABLED',sourceTotal:rows.length})).ok,true);if(i===0)assert.equal((await geo('geo_finish')).status,409);}
+  assert.equal((await geo('geo_finish')).ok,true);const overview=(await admin('overview',{campaignId:c.id})).value;assert.equal(overview.counts.total,1001);assert.equal(overview.territories.partitions.find(p=>p.id===parent.id).state,'SPLIT');
 });

@@ -10,17 +10,17 @@
   shadow.innerHTML=`<style>
     *{box-sizing:border-box}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #cbd5e1;border-radius:7px;padding:9px;background:white;color:#183042}button:disabled{opacity:.45;cursor:default}.primary{background:#ee7918;border-color:#ee7918;color:white;font-weight:650}.panel{width:360px;max-height:calc(100vh - 150px);overflow:auto;background:#fff;border:1px solid #ccd7e0;border-radius:12px;box-shadow:0 8px 35px #16314630}.head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#fff3e8;border-bottom:1px solid #e2e8f0}.head strong{font-size:16px}.body{padding:16px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:12px;font-weight:650}input,select{padding:8px;border:1px solid #ccd7e0;border-radius:6px;width:100%;background:white;color:#183042}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.muted{font-size:12px;line-height:1.5;color:#526b7c}.notice{font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border:1px solid #e2e8f0;background:#f7fafc;padding:10px;border-radius:7px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.stat{padding:8px;background:#f1f6fa;border-radius:6px;font-size:11px}.stat b{display:block;font-size:19px;color:#244a64}.hidden{display:none}.mini{box-shadow:0 4px 15px #16314620;background:#fff3e8}.meter{height:6px;background:#edf2f6;border-radius:6px;overflow:hidden}.meter div{height:100%;background:#ee7918;width:0}a{color:#244a64}
     .working{width:280px}.working .body{padding:10px;gap:8px}.working .body>*{display:none}.working .body>#state,.working .body>#notice,.working .body>#reset,.working .body>#resetConfirm:not(.hidden){display:block}.working .body>#controls,.working .body>.stats{display:grid}.working .head{padding:10px}.working .head strong{font-size:13px}
-  </style><button class="mini hidden" id="mini">FULX · v0.2.4</button><section class="panel" id="panel">
-    <div class="head"><strong>FULX · v0.2.4</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
+  </style><button class="mini hidden" id="mini">FULX · v0.3.1</button><section class="panel" id="panel">
+    <div class="head"><strong>FULX · v0.3.1</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
     <div class="body"><div class="notice" id="notice" role="status" aria-live="polite">Mulai dengan Cek data halaman. Untuk mode server, buka URL proyek lalu jalankan Inventaris ke server dari komputer Koordinator.</div><div class="muted">LIST · ekstrak unique link · hanya OPEN dan CAWI<br>Kolom opsional yang tidak tampil boleh kosong.</div>
     <label>Wilayah<select id="region"><option value="Palu">Kota Palu</option><option value="Sulteng">Seluruh Sulawesi Tengah</option></select></label>
     <div class="row"><label>Awalan kode wilayah<input id="prefix" value="7271" inputmode="numeric" maxlength="16"></label><label>Domain link survei<input id="linkHost" value="esurvey.bps.go.id"></label></div>
-    <div class="muted">Terapkan filter wilayah di FASIH. Awalan kode memeriksa bahwa setiap baris masih berada dalam cakupan.</div>
+    <div class="muted">Mode server wilayah memilih Kota Palu → kecamatan → desa otomatis. Awalan kode memeriksa bahwa setiap baris masih berada dalam cakupan.</div>
     <div class="row"><label>Jeda aksi (detik)<input id="actionDelay" type="number" min="0.05" max="60" step="0.05" value="0.50"></label><label>Jeda antar data (detik)<input id="nextDelay" type="number" min="0" max="300" step="0.05" value="1.00"></label></div>
     <button id="saveTiming">Simpan jeda</button><div class="muted">Jeda sebelum aksi/pembacaan URL. Jika FASIH belum siap, waktu tunggu bisa lebih lama. Atur saat proses berhenti; berlaku saat mulai/lanjut/ulang gagal.</div>
     <div class="notice" id="serverState">Mode lokal · server belum dihubungkan.</div>
     <div class="row"><button id="serverConfig">Pengaturan server</button><button id="serverOpenProject">Buka URL proyek</button></div><div class="row"><button id="serverInventory">Inventaris ke server</button><button id="serverStart" class="primary">Mulai tugas server</button></div><button id="serverSync">Sinkronkan hasil tertunda</button>
-    <div class="muted">Server membagi paket antar komputer. Mode lokal di bawah hanya tersedia saat server tidak terhubung.</div>
+    <div class="muted">Mode wilayah: server membagi desa antar komputer. Inventaris dan ekstraksi mengganti filter FASIH otomatis. Mode lokal di bawah hanya tersedia saat server tidak terhubung.</div>
     <div class="row"><button id="diagnose">Cek data halaman</button><button id="pilot" class="primary">Pilot 5 data</button></div>
     <div class="notice hidden" id="diagnostics" role="status" aria-live="polite"></div>
     <button id="all" class="primary">Mulai seluruh data pada filter</button>
@@ -38,7 +38,7 @@
     if(!response?.ok) throw new Error(response?.error||'Koneksi penyimpanan ekstensi terputus.');
     return response.value;
   };
-  const adapter=new F.Adapter();
+  const adapter=new (F.TerritoryAdapter||F.Adapter)();
   let loaded=null, busy=false, resetting=false, activity='';
   function show(value) { $('notice').textContent=value; }
   function showDiagnostic(value) { $('diagnostics').textContent=value; $('diagnostics').classList.remove('hidden'); }
@@ -58,7 +58,7 @@
     for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverOpenProject','serverSync']) $(id).disabled=active;
     $('export').disabled=!job;
   }
-  const runner=new (F.ServerRunner||F.Runner)(adapter,send,update);
+  const runner=new (F.TerritoryRunner||F.ServerRunner||F.Runner)(adapter,send,update);
   function prefixValue() {
     const prefix=$('prefix').value.trim();
     if(!/^\d{2,16}$/.test(prefix)) throw new Error('Isi awalan kode wilayah, minimal 2 digit.');
@@ -132,13 +132,13 @@
     $('notice').scrollIntoView?.({block:'nearest'});
     const info=await send({type:'REMOTE_INFO'});
     if(mode==='INVENTORY'&&info.worker.role!=='COORDINATOR')throw new Error('Inventaris awal memakai token Koordinator.');
-    const opts={region:info.campaign.name,prefix:info.campaign.prefix,linkHost:info.campaign.linkHost,pilot:false,limit:0,...timingValues(),server:{mode,campaignId:info.campaign.id,workerId:info.worker.id,generation:info.campaign.generation}};
-    if(F.context(location.href).signature!==F.context(info.campaign.sourceUrl).signature){
+    const opts={region:info.campaign.name,prefix:info.campaign.prefix,linkHost:info.campaign.linkHost,pilot:false,limit:0,...timingValues(),server:{mode,campaignId:info.campaign.id,workerId:info.worker.id,generation:info.campaign.generation,territoryMode:info.campaign.inventoryMode==='TERRITORY'}};
+    if(!opts.server.territoryMode&&F.context(location.href).signature!==F.context(info.campaign.sourceUrl).signature){
       const current=new URL(location.href),expected=new URL(info.campaign.sourceUrl);
       throw new Error('Inventaris/tugas belum dimulai: URL atau pencarian berbeda dari proyek dashboard.\nPencarian tab: '+JSON.stringify(current.searchParams.get('search')||'')+'\nPencarian proyek: '+JSON.stringify(expected.searchParams.get('search')||'')+'\nHuruf besar/kecil, spasi, dan parameter lain harus sama. Klik Buka URL proyek, periksa filter wilayah, lalu coba kembali.');
     }
     const prior=await readLatest();
-    if(prior?.job.options.server&&prior.job.phase!=='FINISHED'&&prior.job.status!=='COMPLETE'){
+    if(prior?.job.options.server&&(!opts.server.territoryMode||prior.job.options.server.generation===info.campaign.generation)&&prior.job.phase!=='FINISHED'&&prior.job.status!=='COMPLETE'){
       const old=prior.job,s=old.options.server;
       const empty=mode==='INVENTORY'&&s.mode==='INVENTORY'&&old.phase==='INVENTORY'&&['PAUSED','STOPPED'].includes(old.status)&&
         prior.rows.length===0&&Object.keys(old.pages||{}).length===0&&!old.remoteClaim&&

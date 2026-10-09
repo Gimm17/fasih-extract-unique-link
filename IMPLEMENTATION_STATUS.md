@@ -1,3 +1,17 @@
+# FULX v0.3.1 — inventaris dan ekstraksi per wilayah
+
+Implementasi Kota Palu melalui dropdown FASIH: discovery kecamatan/desa, filter otomatis tanpa Search/Apply, cabang [000] dan hasil nol, checkpoint halaman per partisi, pemecahan SLS/SUBSLS saat mencapai 1.000, serta rekonsiliasi identitas induk. Target proyek tidak diturunkan otomatis. Ekstraksi menggunakan kembali resep wilayah dan memverifikasi keanggotaan halaman sebelum popup.
+
+Migrasi additive dan idempoten mempertahankan akun, token, hasil, link, serta inventaris lama; aktivasi wilayah melalui dashboard menaikkan generasi dan memetakan data lama berdasarkan kode identitas lengkap. Protokol v3 menolak alur flat dari klien lama pada proyek wilayah. Penguncian desa/partisi, halaman, sesi, claim token, heartbeat, REVIEW, requeue, dan outbox mempertahankan pemisahan tugas lima komputer.
+
+Dashboard Progres wilayah menampilkan hierarki dan jumlah unik kota/kecamatan/desa; duplikasi lintas filter dan data belum terpetakan ditampilkan terpisah. Ekspor tujuh sheet: DATA, ERROR, RINGKASAN, REKAP_WILAYAH, INVENTARIS, DUPLIKAT, BELUM_TERPETAKAN. Total sumber yang tidak dapat dibaca dengan pasti tetap NULL/Belum diketahui.
+
+Validasi: seluruh 79 pengujian otomatis lulus. Setelah perbaikan metadata paket/dashboard, 20 pengujian terkait dijalankan ulang dan lulus. Meliputi PHP/MariaDB lokal, lima proses claim bersamaan, migrasi link DONE, deduplikasi, 1.001 assignment melalui SLS, cabang kosong, perubahan signature saat resume, requeue kunci wilayah, serta Chrome dengan discovery → inventaris → filter ulang → dua popup link. Dashboard desktop/mobile dan workbook 1.001 baris diperiksa; ketujuh sheet dibaca ulang dengan openpyxl. Semua data uji fiktif.
+
+Panduan pembaruan: UPDATE_WILAYAH.md. Distribusi ZIP v0.3.1 berversi dan arsip lama dipertahankan.
+
+Batas lapangan: belum dijalankan pada sesi FASIH produksi atau dideploy langsung ke cPanel. Struktur label induk, opsi lazy/virtual, reset halaman, dan isolasi filter antarsesi perlu dibuktikan pada akun produksi. Jika SUBSLS tetap menyentuh 1.000 atau master tidak mencakup identitas induk, proses dijeda dan tidak menganggap inventaris lengkap.
+
 # FULX v0.2.1 — koreksi domain deployment
 
 Domain yang benar: fulx.pinnhost.my.id. Host permission, API default, tombol dashboard, label web, dan panduan menggunakan domain tersebut dengan HTTPS. Versi ekstensi/dashboard dan backup menjadi 0.2.1; ZIP 0.2.0 dipertahankan. Tidak ada perubahan skema database atau alur ekstraksi. Konfigurasi server yang sudah tersimpan tidak diganti otomatis; ubah alamat API lewat Pengaturan server jika sebelumnya menggunakan domain yang salah.

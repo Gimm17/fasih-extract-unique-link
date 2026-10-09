@@ -13,7 +13,7 @@ for(const file of ['server/public/dashboard.js','extension/server-runner.js','ex
 }
 const php=fs.existsSync(path.join(root,'.tools/php/php.exe'))?path.join(root,'.tools/php/php.exe'):'php';
 let available=true;
-for(const file of ['server/public/api.php','server/public/bootstrap.php','server/public/install.php','server/private/Service.php','server/private/config.example.php']){
+for(const file of ['server/public/api.php','server/public/bootstrap.php','server/public/install.php','server/private/Service.php','server/private/TerritoryService.php','server/private/migrate.php','server/private/config.example.php']){
   const r=spawnSync(php,['-l',path.join(root,file)],{encoding:'utf8'});
   if(r.error?.code==='ENOENT'){available=false;break;}if(r.status)throw new Error(r.stderr||r.stdout);
 }

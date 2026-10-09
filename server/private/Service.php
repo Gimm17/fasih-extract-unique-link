@@ -5,17 +5,17 @@ final class ApiError extends RuntimeException {
     public function __construct(string $message, public int $status=400, public string $kind='VALIDATION') { parent::__construct($message); }
 }
 
-final class Service {
-    public function __construct(public PDO $db, private array $config) {}
+class Service {
+    public function __construct(public PDO $db, protected array $config) {}
     public static function now(): string { return gmdate('Y-m-d H:i:s'); }
-    private function query(string $sql, array $args=[]): PDOStatement { $q=$this->db->prepare($sql);$q->execute($args);return $q; }
-    private function one(string $sql,array $args=[]): ?array { return $this->query($sql,$args)->fetch(PDO::FETCH_ASSOC) ?: null; }
-    private function tx(callable $fn): mixed {
+    protected function query(string $sql, array $args=[]): PDOStatement { $q=$this->db->prepare($sql);$q->execute($args);return $q; }
+    protected function one(string $sql,array $args=[]): ?array { return $this->query($sql,$args)->fetch(PDO::FETCH_ASSOC) ?: null; }
+    protected function tx(callable $fn): mixed {
         $this->db->beginTransaction();
         try { $value=$fn();$this->db->commit();return $value; }
         catch(Throwable $e) { if($this->db->inTransaction())$this->db->rollBack();throw $e; }
     }
-    private function event(string $campaign,?string $worker,string $kind,string $message): void {
+    protected function event(string $campaign,?string $worker,string $kind,string $message): void {
         $this->query('INSERT INTO events(campaign_id,worker_id,kind,message,created_at) VALUES(?,?,?,?,UTC_TIMESTAMP(6))',[$campaign,$worker,$kind,substr($message,0,600)]);
     }
     public static function text(mixed $value): string { return trim(preg_replace('/\s+/u',' ',(string)($value??''))??''); }
@@ -40,30 +40,30 @@ final class Service {
         $w=$this->one('SELECT * FROM workers WHERE token_hash=? AND enabled=1',[hash('sha256',$token)]);
         if(!$w)throw new ApiError('Token komputer tidak valid atau sudah dinonaktifkan.',401,'AUTH');return $w;
     }
-    private function campaign(string $id,bool $lock=false): array {
+    protected function campaign(string $id,bool $lock=false): array {
         $c=$this->one('SELECT * FROM campaigns WHERE id=?'.($lock?' FOR UPDATE':''),[$id]);
         if(!$c)throw new ApiError('Proyek tidak ditemukan.',404,'NOT_FOUND');return $c;
     }
-    private function expire(string $campaign): void {
+    protected function expire(string $campaign): void {
         $this->query("UPDATE pages SET state='REVIEW' WHERE campaign_id=? AND state='RUNNING' AND lease_until<=UTC_TIMESTAMP(6)",[$campaign]);
     }
-    private function lease(): string { return gmdate('Y-m-d H:i:s',time()+max(60,min(1800,(int)($this->config['lease_seconds']??300)))); }
-    private function touch(array $w,string $session,string $state,string $activity=''): void {
+    protected function lease(): string { return gmdate('Y-m-d H:i:s',time()+max(60,min(1800,(int)($this->config['lease_seconds']??300)))); }
+    protected function touch(array $w,string $session,string $state,string $activity=''): void {
         if(!preg_match('/^[a-zA-Z0-9_-]{1,80}$/',$session))throw new ApiError('Session komputer tidak valid.');
         $this->query('UPDATE workers SET last_seen=UTC_TIMESTAMP(6),session_id=?,state=?,activity=? WHERE id=?',[$session,$state,substr($activity,0,255),$w['id']]);
     }
-    private function owned(array $w,array $input,bool $recover=false): array {
+    protected function owned(array $w,array $input,bool $recover=false): array {
         $p=$this->one('SELECT * FROM pages WHERE campaign_id=? AND page_no=? FOR UPDATE',[$w['campaign_id'],(int)($input['page']??0)]);
         if(!$p||$p['worker_id']!==$w['id']||$p['session_id']!==($input['session']??'')||!hash_equals($p['claim_token']??'',(string)($input['claimToken']??'')))throw new ApiError('Kepemilikan tugas berubah. Hentikan tindakan pada data ini.',409,'OWNERSHIP');
         if(!in_array($p['state'],['RUNNING','REVIEW'],true))throw new ApiError('Paket tugas sudah ditutup.',409,'OWNERSHIP');
         if(!$recover&&($p['state']!=='RUNNING'||strtotime($p['lease_until'].' UTC')<=time()))throw new ApiError('Kunci tugas kedaluwarsa. Lanjutkan dari komputer pemilik untuk pemulihan.',409,'LEASE');
         return $p;
     }
-    private function pack(array $c,array $p): array {
+    protected function pack(array $c,array $p): array {
         return ['campaign'=>$this->publicCampaign($c),'page'=>(int)$p['page_no'],'keys'=>json_decode($p['signature_json'],true),
             'claimToken'=>$p['claim_token'],'leaseSeconds'=>max(0,strtotime($p['lease_until'].' UTC')-time()),'rows'=>$this->rows($c['id'],null,(int)$p['page_no'])];
     }
-    private function publicCampaign(array $c): array {
+    protected function publicCampaign(array $c): array {
         return ['id'=>$c['id'],'name'=>$c['name'],'scope'=>$c['scope'],'sourceUrl'=>$c['source_url'],'context'=>json_decode($c['context_json'],true),
             'prefix'=>$c['prefix'],'linkHost'=>$c['link_host'],'expectedTotal'=>(int)$c['expected_total'],'state'=>$c['state'],'filterStamp'=>$c['filter_stamp'],'generation'=>(int)$c['generation']];
     }
@@ -210,7 +210,7 @@ final class Service {
             $this->event($c['id'],$w['id'],'RETRY','Data gagal komputer ini diaktifkan kembali.');return ['counts'=>$this->counts($c['id'])];
         });
     }
-    private function row(array $r): array {
+    protected function row(array $r): array {
         $iso=fn($v)=>$v?gmdate('c',strtotime($v.' UTC')):null;
         return ['key'=>$r['identity_key'],'fields'=>json_decode($r['fields_json'],true),'initialMode'=>$r['initial_mode'],'finalMode'=>$r['link']?'CAWI':'',
             'page'=>(int)$r['page_no'],'result'=>$r['result']==='RUNNING'?'PENDING':$r['result'],'serverResult'=>$r['result'],'stage'=>$r['stage'],'link'=>$r['link']??'',
