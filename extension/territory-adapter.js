@@ -1,5 +1,6 @@
 (function(root){
   'use strict';const F=root.Fasih,levels=['PROVINSI','KABUPATEN/KOTA','KECAMATAN','DESA','SLS','SUBSLS'];
+  F.isRegionPlaceholder=r=>/^0+$/.test(String(r?.code||''))||/^[-–—]+$/.test(F.text(r?.name));
   class TerritoryAdapter extends F.Adapter {
     filterPanel(){
       const panels=this.all('[role="dialog"]').filter(p=>[...p.querySelectorAll('h1,h2,h3,[role="heading"]')].some(h=>F.text(h.textContent)==='Filter Data'));
@@ -60,7 +61,7 @@
     option(el,level){
       const text=F.text(el.querySelector('span')?.textContent||el.textContent),m=text.match(/^\[([^\]]+)\]\s*(.+)$/);
       if(!m||el.getAttribute('aria-disabled')==='true'||el.dataset.disabled==='true')return null;
-      return {level,code:m[1],name:m[2],value:el.getAttribute('data-value')||`${m[1]} ${m[2]}`};
+      const option={level,code:m[1],name:m[2],value:el.getAttribute('data-value')||`${m[1]} ${m[2]}`};return F.isRegionPlaceholder(option)?null:option;
     }
     geoPopup(control,panel){
       const id=control.getAttribute('aria-controls'),linked=id&&this.doc.getElementById(id);
@@ -92,12 +93,13 @@
         for(const el of popup.querySelectorAll('[role="option"]')){const r=this.option(el,level);if(r){const old=found.get(r.code);if(old&&old.name!==r.name)throw new F.BotError('Kode pilihan wilayah berulang dengan nama berbeda.','CATALOG',true);found.set(r.code,r);}}
         const stamp=[found.size,scroller?.scrollTop||0,scroller?.scrollHeight||0].join('|');stable=stamp===last?stable+1:0;last=stamp;
         const bottom=!scroller||scroller.scrollTop+scroller.clientHeight>=scroller.scrollHeight-2;
-        if(bottom&&stable>=2){await this.closeOptions(control,popup);if(!found.size&&!/no results|tidak.*(hasil|data)|tidak ditemukan/i.test(popup.textContent))throw new F.BotError('Daftar '+level+' kosong atau belum dimuat.','CATALOG',true);return [...found.values()].sort((a,b)=>a.code.localeCompare(b.code));}
+        if(bottom&&stable>=2){await this.closeOptions(control,popup);if(!found.size&&!popup.querySelector('[role="option"]')&&!/no results|tidak.*(hasil|data)|tidak ditemukan/i.test(popup.textContent))throw new F.BotError('Daftar '+level+' kosong atau belum dimuat.','CATALOG',true);return [...found.values()].sort((a,b)=>a.code.localeCompare(b.code));}
         if(scroller&&!bottom){scroller.scrollTop+=Math.max(1,scroller.clientHeight-30);scroller.dispatchEvent(new this.doc.defaultView.Event('scroll',{bubbles:true}));}
       }
       throw new F.BotError('Daftar wilayah belum mencapai akhir.','CATALOG',true);
     }
     async selectRegion(panel,option){
+      if(F.isRegionPlaceholder(option)||['SLS','SUBSLS'].includes(option.level))throw new F.BotError('Opsi kosong/SLS/SUBSLS tidak dipilih. Filter otomatis dibatasi sampai desa.','FILTER',true);
       const control=await this.readyGeoControl(panel,option.level);if(this.matches(control,option))return;
       const {popup}=await this.dropdown(panel,option.level);
       let get=()=>[...popup.querySelectorAll('[role="option"]')].filter(el=>{const r=this.option(el,option.level);return r&&r.code===option.code&&r.name===option.name;});
@@ -121,6 +123,7 @@
       const button=this.unique(buttons,'Tutup sidebar Filter Data');await this.pace();button.click();await this.waitUi(()=>!this.visible(panel),'sidebar filter ditutup');
     }
     async applyRecipe(recipe,prefix){
+      if(recipe.length!==4||recipe.some(F.isRegionPlaceholder))throw new F.BotError('Tugas harus memakai kecamatan dan desa valid; opsi - dan SLS/SUBSLS tidak dipilih.','FILTER',true);
       this.onActivity('Memasang filter: '+recipe.map(r=>r.name).join(' → '));
       const panel=await this.openFilter();
       for(const option of recipe)await this.selectRegion(panel,option);

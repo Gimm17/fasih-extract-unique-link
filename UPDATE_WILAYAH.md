@@ -1,14 +1,20 @@
-# FULX v0.3.3 — pembaruan wilayah Kota Palu
+# FULX v0.3.4 — pembaruan wilayah Kota Palu
 
 FASIH membatasi hasil satu filter hingga 1.000 assignment. Rilis ini menemukan wilayah dari dropdown FASIH, menginventarisasi per kecamatan/desa, lalu memakai filter yang sama untuk ekstraksi. Target awal Kota Palu tetap **11.649 identitas unik**. Target tidak diturunkan otomatis.
+
+## Perubahan v0.3.4: filter hanya sampai desa
+
+Sesuai arahan terbaru, opsi `-` dan kode yang seluruhnya nol dilewati. Inventaris serta ekstraksi memilih kecamatan/desa bernama. SLS/SUBSLS dikosongkan melalui ikon X bila sebelumnya terisi, tanpa membuka daftar atau memilih opsi di tingkat tersebut. Jika desa valid mencapai 1.000 data, inventaris dijeda dengan nama desa dan belum dianggap lengkap; tidak ada pemecahan otomatis.
+
+Setelah Git pull dan pembaruan ekstensi, klik **Lanjutkan** dengan token yang sama. Checkpoint lokal cabang `-`/SLS/SUBSLS versi lama dilewati. Server membersihkan resep cabang lama dan memetakan ulang identitasnya ke desa nyata, sambil mempertahankan seluruh identitas, hasil, link, token, dan target 11.649. Katalog desa valid dan halaman yang sudah diunggah diperiksa ulang; hasil DONE dipertahankan. Jika ada kunci kerja aktif, server meminta semua komputer dihentikan, hasil disinkronkan, dan kunci ditunggu sampai habis sebelum pemetaan ulang. Tidak perlu reset database/proyek. Tidak ada perubahan skema database.
 
 ## Perbaikan v0.3.3: pemilik inventaris lama sudah nonaktif
 
 Pesan **Koordinator lain memiliki inventaris** dapat muncul setelah mengganti token: nama komputer yang sama tetap memiliki ID berbeda untuk setiap token. Sebelumnya, menonaktifkan token lama belum melepaskan kepemilikan inventarisnya.
 
-Mulai v0.3.3, Koordinator pengganti dapat melanjutkan inventaris wilayah jika pemilik lama sudah **dinonaktifkan** melalui dashboard. Server mengganti pemilik dalam transaksi tanpa menghapus master, halaman inventaris, hasil, atau link. Pemilik yang masih aktif tetap dilindungi; status OFFLINE saja tidak cukup untuk mengambil alih. Token lama yang diaktifkan kembali tidak boleh menulis inventaris setelah kepemilikan berpindah.
+Mulai v0.3.4, Koordinator pengganti dapat melanjutkan inventaris wilayah jika pemilik lama sudah **dinonaktifkan** melalui dashboard. Server mengganti pemilik dalam transaksi tanpa menghapus master, halaman inventaris, hasil, atau link. Pemilik yang masih aktif tetap dilindungi; status OFFLINE saja tidak cukup untuk mengambil alih. Token lama yang diaktifkan kembali tidak boleh menulis inventaris setelah kepemilikan berpindah.
 
-Untuk kasus ini: lakukan `git pull --ff-only` di hosting, muat ulang dashboard, periksa ID pemilik inventaris di **Kelola proyek** dan tanda **Pemilik inventaris** di tabel komputer. Jika pemilik sudah nonaktif, gunakan token Koordinator yang sekarang terhubung dan klik **Lanjutkan** pada ekstensi. Jika pemilik masih aktif, hentikan proses lama dan nonaktifkan ID pemilik itu terlebih dahulu. Tidak perlu reset data, membuat proyek baru, atau membuat token tambahan. ZIP v0.3.3 juga tersedia melalui tombol dashboard. Tidak ada perubahan skema database.
+Untuk kasus ini: lakukan `git pull --ff-only` di hosting, muat ulang dashboard, periksa ID pemilik inventaris di **Kelola proyek** dan tanda **Pemilik inventaris** di tabel komputer. Jika pemilik sudah nonaktif, gunakan token Koordinator yang sekarang terhubung dan klik **Lanjutkan** pada ekstensi. Jika pemilik masih aktif, hentikan proses lama dan nonaktifkan ID pemilik itu terlebih dahulu. Tidak perlu reset data, membuat proyek baru, atau membuat token tambahan. ZIP v0.3.4 juga tersedia melalui tombol dashboard. Tidak ada perubahan skema database.
 
 ## Perbaikan v0.3.2: dropdown Kecamatan tidak ditemukan
 
@@ -47,9 +53,9 @@ Migrasi menambah tabel wilayah, partisi, pemetaan halaman, lokasi identitas, ser
 ## 3. Perbarui kelima ekstensi
 
 1. Muat ulang dashboard dengan **Ctrl+Shift+R**.
-2. Klik **Unduh ekstensi v0.3.3 (ZIP)**.
+2. Klik **Unduh ekstensi v0.3.4 (ZIP)**.
 3. Ekstrak ZIP dan salin isinya ke folder ekstensi yang selama ini dipasang. Timpa file lama dengan versi baru, lalu klik **Reload** di `chrome://extensions`.
-4. Muat ulang tab FASIH. Panel harus menampilkan **FULX v0.3.3**.
+4. Muat ulang tab FASIH. Panel harus menampilkan **FULX v0.3.4**.
 
 Menggunakan folder pemasangan yang sama mempertahankan identitas ekstensi dan penyimpanan lokal. Memasang folder berbeda dapat membuat ekstensi baru dengan penyimpanan berbeda. Gunakan satu ekstensi aktif dan satu token berbeda untuk setiap komputer.
 
@@ -68,8 +74,8 @@ Aktivasi mode wilayah menaikkan generasi proses sehingga tugas lama tidak diteru
 2. Klik **Buka URL proyek**, lalu **Inventaris ke server**.
 3. Ekstensi membuka sidebar Filter Data, memilih `[72] SULAWESI TENGAH` dan `[71] PALU`, membaca semua pilihan kecamatan/desa, kemudian berjalan per filter.
 4. Tidak ada tombol Search/Apply: pilihan langsung diterapkan oleh FASIH. Ekstensi menunggu hasil stabil dan menutup sidebar dengan tombol **Close** di dalam sidebar itu.
-5. Cabang `[000] -` dan wilayah kosong tetap diperiksa. Wilayah kosong disimpan sebagai nol setelah tampilan `No results` terkonfirmasi.
-6. Bila satu filter mencapai **1.000**, filter dipecah ke **SLS**, lalu **SUBSLS**. Identitas yang terlihat pada induk harus ditemukan lagi pada gabungan anak. Bila SUBSLS masih mencapai 1.000 atau opsi pemecahan tidak tersedia, proses dijeda dengan alasan yang jelas.
+5. Opsi `[000] -` dan kode kosong/nol dilewati. Desa bernama yang tidak mempunyai data tetap disimpan sebagai nol setelah tampilan `No results` terkonfirmasi.
+6. Filter otomatis hanya sampai **DESA**. SLS/SUBSLS dikosongkan bila terisi, tanpa membuka daftar opsinya. Jika desa bernama mencapai **1.000**, proses dijeda dengan nama desa untuk pemeriksaan; inventaris desa itu belum dianggap lengkap.
 7. Dashboard **Progres wilayah** menampilkan master, status inventaris, jumlah terbaca, hasil, komputer pemilik, duplikasi, dan data lama belum terpetakan. Total sumber yang tidak tersedia dengan pasti ditampilkan sebagai **Belum diketahui**, bukan ditebak dari badge global.
 8. Proyek menjadi **Siap** setelah semua filter daun terverifikasi, data lama terpetakan, dan total unik cocok dengan target. Jika jumlah berbeda, periksa filter/status/akses wilayah; jangan langsung mengubah target agar lolos.
 

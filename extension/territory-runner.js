@@ -37,6 +37,7 @@
     async discover(){
       const a=this.adapter,rootRecipe=[{level:'PROVINSI',code:'72',name:'SULAWESI TENGAH',value:'72 SULAWESI TENGAH'},{level:'KABUPATEN/KOTA',code:'71',name:'PALU',value:'71 PALU'}];
       let panel=await a.openFilter();for(const r of rootRecipe)await a.selectRegion(panel,r);
+      for(const level of F.territoryLevels.slice(2).reverse())await a.clearRegion(panel,level);
       const stamp=a.nonTerritoryStamp(panel);if(a.expectedNonGeoStamp!=null&&a.expectedNonGeoStamp!==stamp)throw new F.BotError('Filter non-wilayah berbeda dari checkpoint inventaris.','FILTER',true);a.expectedNonGeoStamp=stamp;await this.remote('geo_filter_stamp',{filterStamp:stamp});
       const districts=await a.enumerate(panel,'KECAMATAN');
       if(!districts.length)throw new F.BotError('Pilihan kecamatan Kota Palu kosong.','CATALOG',true);
@@ -48,7 +49,8 @@
         this.guard();this.adapter.onActivity('Menemukan desa: '+districts[i].name+' ('+(i+1)+'/'+districts.length+')');
         await a.selectRegion(panel,districts[i]);await a.clearRegion(panel,'DESA');
         const villages=await a.enumerate(panel,'DESA');
-        const paths=villages.length?villages.map(v=>[...rootRecipe,districts[i],v]):[[...rootRecipe,districts[i]]];
+        if(!villages.length)throw new F.BotError('Daftar desa valid untuk '+districts[i].name+' kosong. Periksa filter; opsi - tidak digunakan.','CATALOG',true);
+        const paths=villages.map(v=>[...rootRecipe,districts[i],v]);
         recipes.push(...paths);await this.remote('geo_catalog',{recipes:paths,complete:false});
         await this.patch({geoDiscovery:{signature,next:i+1,recipes},notice:'Master wilayah: '+recipes.length+' filter daun ditemukan.'});
       }
@@ -67,9 +69,11 @@
       await this.patch({phase:'INVENTORY',operation:'EXTRACT_LINK',processingView:'list'});
       const begin=await this.remote('geo_begin',{url:info.campaign.sourceUrl});
       if(begin.finished){await this.patch({phase:'FINISHED',status:'COMPLETE',inventoryComplete:true,navigating:null,notice:'Inventaris wilayah sudah lengkap di server.'});return;}
+      if(this.job.geoPolicy!=='VILLAGE_ONLY'||begin.catalogChanged)await this.patch({geoPolicy:'VILLAGE_ONLY',geoDiscovery:null,geoScan:null,activeRecipe:null,navigating:null,notice:'Inventaris dilanjutkan hanya pada kecamatan/desa valid. Checkpoint cabang - atau SLS/SUBSLS lama dilewati.'});
       let parts=begin.catalogComplete?begin.partitions:await this.discover();
       for(let index=0;index<parts.length;index++) {
         const part=parts[index];if(part.state!=='NEW')continue;
+        if(part.recipe.length!==4||part.recipe.some(F.isRegionPlaceholder))throw new F.BotError('Katalog server masih memuat opsi - atau wilayah di bawah desa. Perbarui server melalui git pull.','CATALOG',true);
         this.transition=true;this.guard();
         await this.adapter.applyRecipe(part.recipe,this.job.options.prefix);
         let scan=this.job.geoScan?.id===part.id?this.job.geoScan:{id:part.id,pages:{},cursor:1};
@@ -98,19 +102,14 @@
         }
         this.transition=true;
         if(boundary==='CAP_1000') {
-          const level=F.territoryLevels[part.recipe.length];
-          if(!level)throw new F.BotError('SUBSLS '+part.recipe.at(-1).name+' masih mencapai 1.000. Perlu pemecahan tambahan/manual.','CAP',true);
-          const panel=await this.adapter.openFilter(),children=await this.adapter.enumerate(panel,level);await this.adapter.closeFilter(panel);
-          if(!children.length)throw new F.BotError('Wilayah mencapai 1.000 tetapi pilihan '+level+' kosong.','CAP',true);
-          parts=(await this.remote('geo_split',{partitionId:part.id,sampleKeys:Object.values(scan.pages).flatMap(rs=>rs.map(r=>r.key)),recipes:children.map(r=>[...part.recipe,r])})).partitions;
-          await this.patch({geoScan:null,notice:'Wilayah dipecah ke '+level+' karena batas 1.000.'});index=-1;continue;
+          throw new F.BotError('Desa '+part.recipe.at(-1).name+' mencapai batas 1.000 data. Inventaris desa ini belum dapat dinyatakan lengkap. Proses dijeda; SLS/SUBSLS tidak dipilih.','CAP',true);
         }
         const records=[];
         for(const [page,snapshot] of Object.entries(scan.pages)) {
           await this.remote('geo_page',{partitionId:part.id,localPage:Number(page),rows:snapshot});
           for(const r of snapshot) {
-            const prior=this.records.get(r.key),fields={...r.fields};for(const territory of part.recipe)fields[territory.level]=territory.code+' '+territory.name;
-            records.push(prior||{...r,fields,partitionId:part.id,localPage:Number(page),page:Number(page),initialMode:fields.Mode,result:F.isOpen(fields.Status)&&F.mode(fields.Mode)==='CAWI'?'PENDING':'SKIPPED',stage:'DATA_TERSIMPAN',attempts:0,capturedAt:new Date().toISOString()});
+            const prior=this.records.get(r.key),fields={...prior?.fields,...r.fields};delete fields.SLS;delete fields.SUBSLS;for(const territory of part.recipe)fields[territory.level]=territory.code+' '+territory.name;
+            records.push(prior?{...prior,fields,partitionId:part.id,localPage:Number(page),page:Number(page)}:{...r,fields,partitionId:part.id,localPage:Number(page),page:Number(page),initialMode:fields.Mode,result:F.isOpen(fields.Status)&&F.mode(fields.Mode)==='CAWI'?'PENDING':'SKIPPED',stage:'DATA_TERSIMPAN',attempts:0,capturedAt:new Date().toISOString()});
           }
         }
         if(records.length){await this.send({type:'ROWS',id:this.job.id,rows:records});for(const r of records)this.records.set(r.key,r);}

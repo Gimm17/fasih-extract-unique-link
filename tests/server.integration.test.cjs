@@ -149,7 +149,7 @@ test('territory migration preserves links, deduplicates cross-filter rows, check
   const geo=(action,data={})=>w.api(action,{protocol:3,session:'geo-session',...data});
   assert.equal((await geo('geo_begin',{url:source})).ok,true);
   const roots=[{level:'PROVINSI',code:'72',name:'SULAWESI TENGAH'},{level:'KABUPATEN/KOTA',code:'71',name:'PALU'}],district={level:'KECAMATAN',code:'010',name:'PALU BARAT'};
-  const recipes=Array.from({length:5},(_,i)=>[...roots,district,{level:'DESA',code:String(i+1).padStart(3,'0'),name:'DESA UJI '+i}]);recipes.push([...roots,{level:'KECAMATAN',code:'000',name:'-'}]);
+  const recipes=Array.from({length:5},(_,i)=>[...roots,district,{level:'DESA',code:String(i+1).padStart(3,'0'),name:'DESA UJI '+i}]);recipes.push([...roots,district,{level:'DESA',code:'009',name:'EMPTY VILLAGE'}]);
   const catalog=await geo('geo_catalog',{recipes,complete:true});assert.equal(catalog.ok,true,catalog.error);const parts=catalog.value.partitions;
   for(const p of parts){const i=recipes.findIndex(r=>r.at(-1).code===p.recipe.at(-1).code&&r.length===p.recipe.length);const rows=i===5?[]:[{key:F.key('7271000000000000 - EC - 1 - '+(9100+i)),fields:fields('7271000000000000 - EC - 1 - '+(9100+i),'CAWI')},...(i<2?[row]:[])];
     if(rows.length){assert.equal((await geo('geo_page',{partitionId:p.id,localPage:1,rows})).ok,true);assert.equal((await geo('geo_page',{partitionId:p.id,localPage:1,rows})).value.reused,true);}
@@ -205,7 +205,7 @@ test('a disabled inventory owner is replaced atomically without losing catalog, 
   assert.equal((await geo('geo_finish_partition',{partitionId:empty.id,lastPage:0,boundary:'NEXT_DISABLED'})).ok,true);assert.equal((await geo('geo_finish')).ok,true);assert.equal((await geoOld('geo_begin',{url:source})).value.finished,true);
  });
 
-test('1000-row parent splits to SLS, reconciles parent identities, and never becomes ready with missing coverage or count',
+test('a capped village cannot finish or split below DESA; placeholder catalog requests are rejected',
  {skip:!fs.existsSync(php)||!fs.existsSync(config),timeout:45000},async()=>{
   const admin=client();await admin('login',{username:'localadmin',password:'local-fixture-password-2026'});
   const source='https://fasih-sm.bps.go.id/app/surveys/territory-cap/period/data?page=1&perPage=100&view=list';
@@ -215,9 +215,32 @@ test('1000-row parent splits to SLS, reconciles parent identities, and never bec
   const parent=(await geo('geo_catalog',{recipes:[recipe],complete:true})).value.partitions[0];
   const all=Array.from({length:1001},(_,i)=>{const f=fields('7271000000000000 - EC - 1 - '+i,'CAWI');return {key:F.key(f['Kode Identitas']),fields:f};});
   const children=[1,2].map(n=>[...parent.recipe,{level:'SLS',code:'00'+n,name:'SLS '+n}]);
-  const split=await geo('geo_split',{partitionId:parent.id,sampleKeys:all.slice(0,1000).map(r=>r.key),recipes:children});assert.equal(split.ok,true,split.error);
-  const parts=split.value.partitions.filter(p=>p.parent_id===parent.id);
-  assert.equal((await geo('geo_finish_partition',{partitionId:parent.id,lastPage:0,boundary:'NEXT_DISABLED'})).status,400);
-  for(let i=0;i<parts.length;i++){const rows=i===0?all.slice(0,501):all.slice(501);for(let page=1;page<=Math.ceil(rows.length/100);page++)assert.equal((await geo('geo_page',{partitionId:parts[i].id,localPage:page,rows:rows.slice((page-1)*100,page*100)})).ok,true);assert.equal((await geo('geo_finish_partition',{partitionId:parts[i].id,lastPage:Math.ceil(rows.length/100),boundary:'NEXT_DISABLED',sourceTotal:rows.length})).ok,true);if(i===0)assert.equal((await geo('geo_finish')).status,409);}
-  assert.equal((await geo('geo_finish')).ok,true);const overview=(await admin('overview',{campaignId:c.id})).value;assert.equal(overview.counts.total,1001);assert.equal(overview.territories.partitions.find(p=>p.id===parent.id).state,'SPLIT');
+  const split=await geo('geo_split',{partitionId:parent.id,sampleKeys:all.slice(0,1000).map(r=>r.key),recipes:children});assert.equal(split.status,409);assert.match(split.error,/dinonaktifkan/);
+  assert.equal((await geo('geo_catalog',{recipes:[children[0]],complete:false})).status,409);
+  assert.equal((await geo('geo_catalog',{recipes:[[...recipe.slice(0,3),{level:'DESA',code:'000',name:'-'}]],complete:false})).status,409);
+  for(let page=1;page<=10;page++)assert.equal((await geo('geo_page',{partitionId:parent.id,localPage:page,rows:all.slice((page-1)*100,page*100)})).ok,true);
+  assert.equal((await geo('geo_finish_partition',{partitionId:parent.id,lastPage:10,boundary:'NEXT_DISABLED'})).status,409);assert.equal((await geo('geo_finish')).status,409);
+  const overview=(await admin('overview',{campaignId:c.id})).value;assert.equal(overview.territories.partitions.length,1);assert.equal(overview.campaign.state,'IMPORTING');assert.equal(overview.campaign.expectedTotal,1001);
 });
+
+test('old placeholder/SLS catalogs are remapped to villages while DONE links and reusable real-village pages survive',
+ {skip:!fs.existsSync(php)||!fs.existsSync(config),timeout:45000},async()=>{
+  const admin=client();await admin('login',{username:'localadmin',password:'local-fixture-password-2026'});
+  const source='https://fasih-sm.bps.go.id/app/surveys/village-policy/period/data?page=1&perPage=100&view=list';
+  const c=(await admin('create_campaign',{name:'Village policy migration',url:source,prefix:'7271',expectedTotal:1})).value,w=(await admin('create_worker',{campaignId:c.id,name:'Village coordinator',role:'COORDINATOR'})).value,api=client(w.token);
+  const f=fields('7271000000000000 - EC - 1 - 99881','CAWI'),row={key:F.key(f['Kode Identitas']),fields:f};await api('import_begin',{url:source,prefix:'7271',filterStamp:''});await api('import_page',{page:1,rows:[row]});await api('import_finish',{lastPage:1});
+  const pack=(await api('claim',{session:'village-legacy'})).value,owned={session:'village-legacy',page:pack.page,claimToken:pack.claimToken},link='https://esurvey.bps.go.id/h/s/village-policy-preserved';await api('begin_record',{...owned,key:row.key});await api('checkpoint',{...owned,record:{...pack.rows[0],result:'DONE',link,stage:'SELESAI'}});await api('close_page',{...owned,complete:true});
+  await admin('enable_territories',{campaignId:c.id});const geo=(action,data={})=>api(action,{protocol:3,session:'village-inventory',...data});await geo('geo_begin',{url:source});
+  const roots=[{level:'PROVINSI',code:'72',name:'SULAWESI TENGAH'},{level:'KABUPATEN/KOTA',code:'71',name:'PALU'}],district={level:'KECAMATAN',code:'010',name:'PALU BARAT'},recipe=[...roots,district,{level:'DESA',code:'004',name:'UJUNA'}];
+  const original=(await geo('geo_catalog',{recipes:[recipe],complete:true})).value.partitions[0];await geo('geo_page',{partitionId:original.id,localPage:1,rows:[row]});await geo('geo_finish_partition',{partitionId:original.id,lastPage:1,boundary:'NEXT_DISABLED'});
+  const placeholder=[...roots,{level:'KECAMATAN',code:'000',name:'-'},{level:'DESA',code:'000',name:'-'},{level:'SLS',code:'0000',name:'-'},{level:'SUBSLS',code:'00',name:'-'}];
+  await cli({action:'__obsolete_geo',campaignId:c.id,recipe:placeholder,keys:[row.key],active:true,workerId:w.id});await cli({action:'__obsolete_geo',campaignId:c.id,recipe:[...original.recipe,{level:'SLS',code:'001',name:'REAL SLS'}]});
+  const before=(await admin('overview',{campaignId:c.id})).value;assert.equal(before.counts.done,1);assert.ok(before.territories.partitions.some(p=>p.recipe.length>4));
+  assert.equal((await geo('geo_begin',{url:source})).status,409);assert.equal((await admin('overview',{campaignId:c.id})).value.territories.partitions.length,before.territories.partitions.length);await cli({action:'__expire',campaignId:c.id,page:Number(before.packages[0].page_no)});
+  const repaired=await geo('geo_begin',{url:source});assert.equal(repaired.ok,true,repaired.error);assert.equal(repaired.value.catalogChanged,true);assert.equal(repaired.value.catalogComplete,false);assert.equal(repaired.value.partitions.length,1);assert.equal(repaired.value.partitions[0].state,'NEW');assert.equal(repaired.value.partitions[0].parent_id,null);
+  assert.equal((await geo('geo_begin',{url:source})).value.catalogChanged,false);
+  const preserved=(await admin('export',{campaignId:c.id,limit:500})).value.rows[0];assert.equal(preserved.link,link);assert.equal(preserved.result,'DONE');assert.equal(preserved.partitionId,null);
+  await geo('geo_catalog',{recipes:[recipe],complete:true});assert.equal((await geo('geo_page',{partitionId:original.id,localPage:1,rows:[row]})).value.reused,true);await geo('geo_finish_partition',{partitionId:original.id,lastPage:1,boundary:'NEXT_DISABLED'});assert.equal((await geo('geo_finish')).ok,true);
+  const after=(await admin('overview',{campaignId:c.id})).value;assert.equal(after.territories.unmapped,0);assert.equal(after.counts.done,1);assert.equal(after.campaign.generation,before.campaign.generation);assert.equal(after.territories.partitions.every(p=>p.recipe.length===4&&!p.recipe.some(r=>r.name==='-')),true);
+  const final=(await admin('export',{campaignId:c.id,limit:500})).value.rows[0];assert.equal(final.link,link);assert.equal(final.partitionId,original.id);
+ });

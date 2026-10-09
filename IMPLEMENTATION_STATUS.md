@@ -1,4 +1,14 @@
-# FULX v0.3.3 — inventaris dan ekstraksi per wilayah
+# FULX v0.3.4 — filter hanya sampai desa
+
+Arahan terbaru pengguna menggantikan penelusuran cabang `[000] -` dan pemecahan SLS/SUBSLS. Adapter melewati opsi bernama `-` atau kode seluruhnya nol, menolak pemilihan SLS/SUBSLS, dan hanya menjalankan resep provinsi/kota/kecamatan/desa valid. Pilihan SLS/SUBSLS lama dikosongkan melalui ikon X, tanpa membuka daftar opsinya. Discovery hanya menyimpan desa bernama; desa bernama dengan hasil kosong tetap terverifikasi nol. Desa yang mencapai 1.000 dijeda tanpa pemecahan dan tanpa dinyatakan lengkap.
+
+Runner mempunyai penanda checkpoint `VILLAGE_ONLY`: checkpoint discovery/scan lama yang memuat cabang - atau tingkat di bawah desa dilewati satu kali. Data lokal DONE dan link tetap dipertahankan, dengan metadata wilayah diperbarui. `geo_begin` membersihkan resep lama di server dalam transaksi, setelah memeriksa pemilik dan kunci aktif. Identitas, hasil, link, token, target, dan generasi tetap ada; lokasi filter yang tidak berlaku dilepas untuk pemetaan ulang. Desa valid serta signature halaman yang sudah diunggah dipakai ulang setelah verifikasi. Katalog dibaca ulang sampai desa dan request `geo_split` ditolak, termasuk dari klien lama. Tidak ada perubahan skema database.
+
+Validasi v0.3.4: **86 tes lulus, 0 gagal, 0 dilewati**. Uji Chrome memulai dari KECAMATAN/DESA/SLS/SUBSLS bernilai `-`, lalu memastikan tidak ada opsi nol yang dipilih dan tidak ada dropdown SLS/SUBSLS yang dibuka sepanjang inventaris serta ekstraksi. Uji PHP/MariaDB membuktikan pembersihan katalog placeholder/SLS mempertahankan link DONE dan halaman desa yang dapat digunakan kembali; pemetaan ulang ditolak selama kunci aktif. Uji desa 1.000 membuktikan inventaris tidak menjadi READY dan tidak membuat partisi SLS. Data uji fiktif; belum dijalankan pada sesi FASIH produksi pengguna.
+
+Distribusi: `dist/fasih-cawi-link-exporter-v0.3.4.zip` dan `dist/fulx-cpanel-server-v0.3.4.zip`. Pembaruan hosting melalui Git pull; setelah Reload ekstensi, refresh FASIH lalu Lanjutkan dengan token yang sama. Tidak perlu reset proyek/database.
+
+# Riwayat FULX v0.3.3 — inventaris dan ekstraksi per wilayah
 
 Perbaikan v0.3.3: `geo_begin` mengizinkan Koordinator aktif mengambil alih inventaris dari pemilik nonaktif/tidak tersedia, di bawah lock transaksi proyek. Pemilik yang masih aktif tetap ditolak dengan nama dan ID pendek yang bisa dicocokkan di dashboard. Master, katalog lengkap/parsial, halaman, filter stamp, generasi, hasil, dan link tetap ada. Request inventaris memeriksa ulang akses Koordinator setelah lock; token lama yang diaktifkan kembali tetap ditolak karena bukan pemilik. Inventaris yang sudah selesai dilaporkan selesai tanpa perebutan pemilik. Dashboard menampilkan pemilik beserta status akses dan ID pendek setiap komputer, sehingga nama yang sama tidak membingungkan.
 

@@ -1,6 +1,7 @@
 # Instruksi proyek
 
 - Arahan pengguna terbaru (9 Oktober 2026): hanya ekstraksi unique link dari assignment OPEN yang sudah CAWI di view=list. Langkah perubahan mode CAWI, dropdown, toggle pengiriman, dan save mode sudah dihapus. Kolom opsional yang tidak tampil boleh kosong.
+- Filter otomatis hanya sampai desa bernama. Lewati opsi `-`/kode seluruhnya nol; SLS dan SUBSLS dikosongkan bila masih terisi, tanpa membuka atau memilih opsinya. Desa yang mencapai batas 1.000 dijeda untuk pemeriksaan, tidak dipecah otomatis.
 
 - Setiap pembaruan kode ekstensi yang akan dibagikan harus mempunyai versi baru. Samakan versi di `extension/manifest.json`, `package.json`, dan label versi panel.
 - Setelah pemeriksaan yang sesuai selesai, selalu jalankan `node scripts/package.cjs` untuk membuat ZIP siap dibagikan dengan nama `dist/fasih-cawi-link-exporter-v<VERSI>.zip`.
