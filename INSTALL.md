@@ -1,6 +1,6 @@
 # Pasang FULX v0.2.4 di cPanel
 
-> **Rilis v0.3.1:** untuk pembaruan proyek yang sudah terpasang, ikuti [UPDATE_WILAYAH.md](UPDATE_WILAYAH.md). Migrasi wilayah mempertahankan database, link, dan token; installer tidak perlu dijalankan ulang. Scope awal Kota Palu, prefix 7271, target 11649.
+> **Rilis v0.3.2:** untuk pembaruan proyek yang sudah terpasang, ikuti [UPDATE_WILAYAH.md](UPDATE_WILAYAH.md). Migrasi wilayah mempertahankan database, link, dan token; installer tidak perlu dijalankan ulang. Scope awal Kota Palu, prefix 7271, target 11649.
 
 Target: **https://fulx.pinnhost.my.id** · **5 komputer** · **11.649 assignment**.
 Nama aplikasi: **FULX — FASIH Unique Link eXtractor**.

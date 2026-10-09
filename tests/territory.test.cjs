@@ -29,6 +29,29 @@ test('duplicate labels stop automation; changing a lower filter prevents verific
  a.geoControl(panel,'SLS').querySelector('span').textContent='[001] EXTRA';assert.throws(()=>a.verifyRecipe(panel,r),/SLS/);
  panel.insertAdjacentHTML('beforeend','<div><span>DESA</span><button role="combobox">Pilih wilayah</button></div>');assert.throws(()=>a.geoControl(panel,'DESA'),/2 kandidat/);
 });
+test('district captions with nested markup, headings, and text beside the trigger open the correct dropdown',async()=>{
+ for(const caption of ['<h4>KECAMATAN</h4>','<label>KECAMATAN<svg aria-hidden="true"></svg></label>','KECAMATAN']){
+  const {a,panel}=fixture();await a.openFilter();const district=a.geoControl(panel,'KECAMATAN'),group=district.parentElement;
+  group.firstChild.remove();group.insertAdjacentHTML('afterbegin',caption);
+  assert.equal(a.geoControl(panel,'KECAMATAN'),district);
+  assert.deepEqual((await a.enumerate(panel,'KECAMATAN')).map(r=>r.code),['000','010']);
+  await a.selectRegion(panel,{level:'KECAMATAN',code:'010',name:'PALU BARAT'});
+  assert.equal(a.selected(district),'[010] PALU BARAT');assert.equal(a.selected(a.geoControl(panel,'DESA')),'Pilih wilayah');
+ }
+});
+test('explicit label associations identify controls in a shared group without guessing their position',async()=>{
+ const {a,panel,doc}=fixture();await a.openFilter();const district=a.geoControl(panel,'KECAMATAN'),village=a.geoControl(panel,'DESA');
+ district.parentElement.remove();village.parentElement.remove();
+ const group=doc.createElement('div');group.innerHTML='<label for="district">KECAMATAN</label><h4 id="village-label">DESA</h4>';panel.append(group);
+ district.id='district';village.setAttribute('aria-labelledby','village-label');group.append(village,district);
+ assert.equal(a.geoControl(panel,'KECAMATAN'),district);assert.equal(a.geoControl(panel,'DESA'),village);
+ assert.deepEqual((await a.enumerate(panel,'KECAMATAN')).map(r=>r.code),['000','010']);
+});
+test('opening the filter waits for district controls to finish rendering',async()=>{
+ const {a,panel,doc}=fixture();doc.body.append(panel);const district=a.geoControl(panel,'KECAMATAN'),group=district.parentElement;group.remove();
+ let ticks=0;a.sleep=async()=>{if(++ticks===1)panel.append(group);};
+ assert.equal(await a.openFilter(),panel);assert.equal(a.geoControl(panel,'KECAMATAN'),district);assert.ok(ticks>0);
+});
 function simulation(parts,packets={}){
  const job={id:'geo-job',context:F.context(url),options:{prefix:'7271',linkHost:'esurvey.bps.go.id',actionDelayMs:50,nextDelayMs:0,server:{mode:'INVENTORY',territoryMode:true,campaignId:'c',workerId:'w',generation:1}},phase:'INVENTORY',status:'RUNNING',pages:{},visitPages:[],attempted:[]};
  const store={job},events=[],saved=new Map();let currentPart,local=1;

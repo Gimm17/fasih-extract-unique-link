@@ -6,22 +6,49 @@
       return panels.length?this.unique(panels,'Sidebar Filter Data'):null;
     }
     async openFilter(){
-      let panel=this.filterPanel();if(panel)return panel;
-      const b=this.unique(this.all('button[aria-haspopup="dialog"]').filter(b=>b.querySelector('.tabler-icon-filter')),'Tombol Filter Data');
-      return this.openControl(b,()=>this.filterPanel(),'Sidebar Filter Data');
+      let panel=this.filterPanel();
+      if(!panel){
+        const b=this.unique(this.all('button[aria-haspopup="dialog"]').filter(b=>b.querySelector('.tabler-icon-filter')),'Tombol Filter Data');
+        panel=await this.openControl(b,()=>this.filterPanel(),'Sidebar Filter Data');
+      }
+      for(const level of levels)await this.readyGeoControl(panel,level);
+      return panel;
     }
-    geoControl(panel,level){
-      const labels=this.all('label,span,div,p',panel).filter(e=>!e.children.length&&F.text(e.textContent).toUpperCase()===level);
+    fieldName(value){return F.text(value).toUpperCase().replace(/\s*\/\s*/g,'/').replace(/\s*:\s*$/,'');}
+    geoCandidates(panel,level){
       const candidates=new Set();
+      const buttons=this.all('button[role="combobox"]',panel);
+      // FASIH can render a field caption with nested markup or as text in the
+      // same container as its trigger. Do not require an empty leaf element.
+      const labels=[...panel.querySelectorAll('*')].filter(e=>{
+        if(e.closest('button,[role="combobox"],svg,[role="option"]'))return false;
+        const own=[...e.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join(' ');
+        return (this.visible(e)||[...e.children].some(c=>this.visible(c)))&&
+          (this.fieldName(e.textContent)===level||this.fieldName(own)===level);
+      });
+      for(const b of buttons){
+        if(this.fieldName(b.getAttribute('aria-label')||'')===level)candidates.add(b);
+        const ids=(b.getAttribute('aria-labelledby')||'').split(/\s+/).filter(Boolean);
+        if(ids.some(id=>{const label=this.doc.getElementById(id);return label&&panel.contains(label)&&this.fieldName(label.textContent)===level;}))candidates.add(b);
+      }
       for(const label of labels){
-        const linked=label.getAttribute('for');if(linked){const b=this.doc.getElementById(linked);if(b?.getAttribute('role')==='combobox'&&panel.contains(b))candidates.add(b);}
-        for(let group=label.parentElement;group&&group!==panel;group=group.parentElement){
+        const linked=label.getAttribute('for');if(linked){const b=this.doc.getElementById(linked);if(buttons.includes(b))candidates.add(b);}
+        for(let group=label;group&&group!==panel;group=group.parentElement){
           const buttons=this.all('button[role="combobox"]',group);
           if(buttons.length===1){candidates.add(buttons[0]);break;}
           if(buttons.length>1)break;
         }
       }
-      return this.unique([...candidates], 'Dropdown '+level);
+      return [...candidates];
+    }
+    geoControl(panel,level){return this.unique(this.geoCandidates(panel,level),'Dropdown '+level);}
+    async readyGeoControl(panel,level){
+      await this.waitUi(()=>{
+        const candidates=this.geoCandidates(panel,level);
+        if(candidates.length>1)this.unique(candidates,'Dropdown '+level);
+        return candidates.length===1;
+      },'label dan tombol dropdown '+level+' tersedia');
+      return this.geoControl(panel,level);
     }
     selected(control){return F.text(control.querySelector('span')?.textContent||control.textContent);}
     matches(control,option){return this.selected(control)===`[${option.code}] ${option.name}`;}
@@ -43,7 +70,7 @@
       return roots.length?this.unique(roots,'Pilihan wilayah terbuka'):null;
     }
     async dropdown(panel,level){
-      const control=this.geoControl(panel,level);const popup=await this.openControl(control,()=>this.geoPopup(control,panel),'Pilihan '+level);return {control,popup};
+      const control=await this.readyGeoControl(panel,level);const popup=await this.openControl(control,()=>this.geoPopup(control,panel),'Pilihan '+level);return {control,popup};
     }
     inputValue(input,value){
       const setter=Object.getOwnPropertyDescriptor(this.doc.defaultView.HTMLInputElement.prototype,'value').set;setter.call(input,value);
@@ -71,7 +98,7 @@
       throw new F.BotError('Daftar wilayah belum mencapai akhir.','CATALOG',true);
     }
     async selectRegion(panel,option){
-      const control=this.geoControl(panel,option.level);if(this.matches(control,option))return;
+      const control=await this.readyGeoControl(panel,option.level);if(this.matches(control,option))return;
       const {popup}=await this.dropdown(panel,option.level);
       let get=()=>[...popup.querySelectorAll('[role="option"]')].filter(el=>{const r=this.option(el,option.level);return r&&r.code===option.code&&r.name===option.name;});
       if(!get().length){const input=popup.querySelector('input');if(!input)throw new F.BotError('Pilihan wilayah target tidak ditemukan.','FILTER',true);this.inputValue(input,option.code);await this.sleep(this.actionDelayMs);}

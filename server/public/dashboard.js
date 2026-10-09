@@ -81,7 +81,7 @@ async function exportAll(json){if(!project||!snapshot)return;const buttons=[$('e
   for(const r of rows)r.fields['Komputer']=r.workerName||'';
   const base='FULX-'+c.id.slice(0,8)+'-'+Fasih.localDate();
   const territories=(await api('overview',{campaignId:project})).territories;
-  if(json)download(JSON.stringify({version:'0.3.1',exportedAt:new Date().toISOString(),campaign:c,territories,job,rows},null,2),'application/json',base+'.json');
+  if(json)download(JSON.stringify({version:'0.3.2',exportedAt:new Date().toISOString(),campaign:c,territories,job,rows},null,2),'application/json',base+'.json');
   else download(FasihXlsx.makeWorkbook([...FasihXlsx.exportSheets(job,rows),...territorySheets(territories,rows)]),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',base+'.xlsx');
   message('Unduhan siap: '+fmt(rows.length)+' baris.');
 }catch(e){message(e.message);}finally{buttons.forEach(b=>b.disabled=false);}}

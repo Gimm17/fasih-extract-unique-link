@@ -1,6 +1,12 @@
-# FULX v0.3.1 — pembaruan wilayah Kota Palu
+# FULX v0.3.2 — pembaruan wilayah Kota Palu
 
 FASIH membatasi hasil satu filter hingga 1.000 assignment. Rilis ini menemukan wilayah dari dropdown FASIH, menginventarisasi per kecamatan/desa, lalu memakai filter yang sama untuk ekstraksi. Target awal Kota Palu tetap **11.649 identitas unik**. Target tidak diturunkan otomatis.
+
+## Perbaikan v0.3.2: dropdown Kecamatan tidak ditemukan
+
+Pencarian label tidak lagi terbatas ke tag tertentu atau label tanpa elemen anak. Caption dalam heading, label dengan ikon/markup, dan teks yang berada dalam grup tombol didukung. Asosiasi `for`, `aria-label`, dan `aria-labelledby` juga dibaca. Tombol tetap dipilih berdasarkan nama field dan grupnya, bukan urutan dropdown atau ID Radix. Sidebar menunggu keenam kontrol wilayah selesai muncul sebelum discovery.
+
+Jika v0.3.1 dijeda dengan pesan **Dropdown KECAMATAN: ditemukan 0 kandidat**, perbarui ekstensi pada folder pemasangan yang sama, Reload di `chrome://extensions`, muat ulang FASIH, lalu klik **Lanjutkan** memakai token dan sesi tersimpan. Tidak perlu reset inventaris atau membuat token baru. Pembaruan ini tidak mengubah skema database; `git pull --ff-only` juga memperbarui tombol download ZIP dashboard.
 
 ## 1. Sebelum memperbarui
 
@@ -33,9 +39,9 @@ Migrasi menambah tabel wilayah, partisi, pemetaan halaman, lokasi identitas, ser
 ## 3. Perbarui kelima ekstensi
 
 1. Muat ulang dashboard dengan **Ctrl+Shift+R**.
-2. Klik **Unduh ekstensi v0.3.1 (ZIP)**.
+2. Klik **Unduh ekstensi v0.3.2 (ZIP)**.
 3. Ekstrak ZIP dan salin isinya ke folder ekstensi yang selama ini dipasang. Timpa file lama dengan versi baru, lalu klik **Reload** di `chrome://extensions`.
-4. Muat ulang tab FASIH. Panel harus menampilkan **FULX v0.3.1**.
+4. Muat ulang tab FASIH. Panel harus menampilkan **FULX v0.3.2**.
 
 Menggunakan folder pemasangan yang sama mempertahankan identitas ekstensi dan penyimpanan lokal. Memasang folder berbeda dapat membuat ekstensi baru dengan penyimpanan berbeda. Gunakan satu ekstensi aktif dan satu token berbeda untuk setiap komputer.
 

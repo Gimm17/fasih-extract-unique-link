@@ -1,4 +1,6 @@
-# FULX v0.3.1 — inventaris dan ekstraksi per wilayah
+# FULX v0.3.2 — inventaris dan ekstraksi per wilayah
+
+Perbaikan v0.3.2 untuk kegagalan `Dropdown KECAMATAN: ditemukan 0 kandidat`: caption field dapat menggunakan tag lain, markup/ikon bertingkat, atau teks langsung dalam grup tombol. Asosiasi label eksplisit didukung, kandidat ambigu tetap ditolak, dan discovery menunggu seluruh kontrol wilayah muncul. Checkpoint dan token yang sama dapat dilanjutkan setelah Reload ekstensi dan refresh FASIH; tidak ada perubahan skema database.
 
 Implementasi Kota Palu melalui dropdown FASIH: discovery kecamatan/desa, filter otomatis tanpa Search/Apply, cabang [000] dan hasil nol, checkpoint halaman per partisi, pemecahan SLS/SUBSLS saat mencapai 1.000, serta rekonsiliasi identitas induk. Target proyek tidak diturunkan otomatis. Ekstraksi menggunakan kembali resep wilayah dan memverifikasi keanggotaan halaman sebelum popup.
 
@@ -6,9 +8,9 @@ Migrasi additive dan idempoten mempertahankan akun, token, hasil, link, serta in
 
 Dashboard Progres wilayah menampilkan hierarki dan jumlah unik kota/kecamatan/desa; duplikasi lintas filter dan data belum terpetakan ditampilkan terpisah. Ekspor tujuh sheet: DATA, ERROR, RINGKASAN, REKAP_WILAYAH, INVENTARIS, DUPLIKAT, BELUM_TERPETAKAN. Total sumber yang tidak dapat dibaca dengan pasti tetap NULL/Belum diketahui.
 
-Validasi: seluruh 79 pengujian otomatis lulus. Setelah perbaikan metadata paket/dashboard, 20 pengujian terkait dijalankan ulang dan lulus. Meliputi PHP/MariaDB lokal, lima proses claim bersamaan, migrasi link DONE, deduplikasi, 1.001 assignment melalui SLS, cabang kosong, perubahan signature saat resume, requeue kunci wilayah, serta Chrome dengan discovery → inventaris → filter ulang → dua popup link. Dashboard desktop/mobile dan workbook 1.001 baris diperiksa; ketujuh sheet dibaca ulang dengan openpyxl. Semua data uji fiktif.
+Validasi v0.3.2: seluruh **82 pengujian otomatis lulus**, tanpa kegagalan atau tes dilewati. Tiga regresi baru mencakup bentuk caption Kecamatan, asosiasi label dalam grup bersama, dan kontrol yang muncul terlambat. Chrome menjalankan discovery → inventaris → filter ulang → dua popup link dengan caption Kecamatan berisi heading/ikon dan Desa berupa teks langsung. Suite juga menguji PHP/MariaDB lokal, lima proses claim bersamaan, migrasi link DONE, deduplikasi, 1.001 assignment melalui SLS, cabang kosong, perubahan signature saat resume, dan requeue kunci wilayah. Pemeriksaan sintaks JS/PHP lulus. Dashboard desktop/mobile dan ketujuh sheet workbook 1.001 baris sebelumnya diperiksa pada v0.3.1; formatnya tidak berubah. Semua data uji fiktif.
 
-Panduan pembaruan: UPDATE_WILAYAH.md. Distribusi ZIP v0.3.1 berversi dan arsip lama dipertahankan.
+Panduan pembaruan: UPDATE_WILAYAH.md. Distribusi ZIP v0.3.2 berversi dan arsip lama dipertahankan.
 
 Batas lapangan: belum dijalankan pada sesi FASIH produksi atau dideploy langsung ke cPanel. Struktur label induk, opsi lazy/virtual, reset halaman, dan isolasi filter antarsesi perlu dibuktikan pada akun produksi. Jika SUBSLS tetap menyentuh 1.000 atau master tidak mencakup identitas induk, proses dijeda dan tidak menganggap inventaris lengkap.
 
