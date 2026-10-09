@@ -1,0 +1,11 @@
+node_modules/
+test-output/
+.tools/
+dist/*
+!dist/fasih-cawi-link-exporter-v*.zip
+!dist/fulx-cpanel-server-v*.zip
+server/private/config.php
+.env
+.env.*
+!.env.example
+*.log

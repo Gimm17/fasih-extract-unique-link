@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "FULX — FASIH Unique Link eXtractor",
+  "version": "0.2.1",
+  "description": "Ekstrak unique link OPEN/CAWI dari list, bagi tugas antar komputer melalui server FULX, dan ekspor Excel.",
+  "host_permissions": [
+    "https://fasih-sm.bps.go.id/*",
+    "https://fulx.pinnhost.my.id/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Buka panel FULX"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://fasih-sm.bps.go.id/app/surveys/*"
+      ],
+      "js": [
+        "core.js",
+        "adapter.js",
+        "runner.js",
+        "server-runner.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
+}

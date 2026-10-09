@@ -1,0 +1,3 @@
+# Preserve source bytes across checkouts so versioned distribution ZIPs stay reproducible.
+# The packager refuses to replace an existing version with different bytes.
+* -text
