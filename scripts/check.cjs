@@ -8,7 +8,7 @@ for(const file of fs.readdirSync(path.join(root,'extension')).filter(f=>f.endsWi
 }
 for(const file of [...manifest.content_scripts.flatMap(c=>c.js),manifest.background.service_worker])if(!fs.existsSync(path.join(root,'extension',file)))throw new Error('Missing '+file);
 console.log('Manifest and all extension JavaScript syntax OK.');
-for(const file of ['server/public/dashboard.js','extension/server-runner.js','extension/remote.js']){
+for(const file of ['server/public/dashboard.js','server/public/documentation.js','extension/server-runner.js','extension/remote.js']){
   const r=spawnSync(process.execPath,['--check',path.join(root,file)],{encoding:'utf8'});if(r.status)throw new Error(r.stderr);
 }
 const php=fs.existsSync(path.join(root,'.tools/php/php.exe'))?path.join(root,'.tools/php/php.exe'):'php';

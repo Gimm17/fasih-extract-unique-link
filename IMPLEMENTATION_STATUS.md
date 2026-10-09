@@ -1,3 +1,13 @@
+# FULX v0.3.7 — Dokumentasi pada sidebar dashboard
+
+Menu Dokumentasi membuka panduan yang dibundel lokal dengan dashboard: pemasangan, mode lokal, proyek/token/server, inventaris wilayah, ekstraksi bersama, fungsi dashboard/status, tombol panel, ekspor, jeda/resume/retry, pembaruan, reset/akun, dan penanganan kendala. Dua pilihan awal membedakan alur satu komputer dan alur server. Daftar isi memiliki 12 topik dengan anchor; `#documentation` dan `#doc-local` (serta topik lain) dapat dibuka kembali setelah login/reload. Dokumentasi tidak membutuhkan proyek aktif; pemilihan proyek/notifikasi aksi disembunyikan selama membaca, dan polling pusat tidak mengganti halaman panduan. Halaman Cara pakai ekstensi menautkan dokumentasi lengkap.
+
+Konten mengikuti kode dan tombol saat ini, termasuk pilot pada halaman aktif, mode lokal yang membutuhkan filter manual, pemecahan desa → SLS → SUBSLS hanya pada batas 1.000, resep ekstraksi yang sama dengan inventaris, kepemilikan token/kunci, ekspor seluruh proyek, serta perbedaan reset lokal/pusat. Tidak ada perubahan database atau alur ekstraksi.
+
+Validasi v0.3.7: **89 tes lulus, 0 gagal, 0 dilewati**, pemeriksaan sintaks JS/PHP termasuk file panduan baru lulus. Smoke test Chrome memeriksa seluruh anchor, menu aktif, login ke topik, reload, perpindahan kembali ke Monitor, proyek kosong/terisi, polling, dan tautan ZIP yang sesuai versi; membaca dokumentasi tidak melakukan mutasi API. Screenshot desktop 1440 dan ponsel 375 diperiksa; konten tidak membuat overflow halaman, tabel panjang bergulir di wadahnya. Header ponsel dan kolom grid panduan disesuaikan untuk ukuran kecil. Semua data pengujian fiktif lokal.
+
+Distribusi ZIP ekstensi/server v0.3.7 mempertahankan arsip lama. Deployment hosting melalui Git pull pengguna, lalu Ctrl+F5 dan menu Dokumentasi; tidak perlu installer/reset database. Rilis belum dideploy langsung ke cPanel.
+
 # FULX v0.3.6 — tampilkan/sembunyikan password login
 
 Kolom password login memakai tombol mata di sisi kanan. Tombol bertipe button agar tidak mengirim form, dilengkapi label Tampilkan/Sembunyikan password, aria-controls, aria-pressed, dan indikator fokus keyboard. Nilai input tetap sama saat tipe password/text diganti. Password kembali tersembunyi setelah login berhasil atau halaman login ditampilkan kembali saat logout/sesi berakhir. Tidak ada perubahan autentikasi, database, token, atau alur wilayah.

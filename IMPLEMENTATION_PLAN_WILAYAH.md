@@ -2,7 +2,7 @@
 
 Tanggal: 9 Oktober 2026. Dasar kode: v0.2.4. Usulan rilis besar: v0.3.0.
 
-Status: telah diimplementasikan dan diperbarui sampai v0.3.6; deployment hosting dilakukan melalui Git pull pengguna.
+Status: telah diimplementasikan dan diperbarui sampai v0.3.7; deployment hosting dilakukan melalui Git pull pengguna.
 Arahan terbaru 9 Oktober 2026: otomatisasi mulai per desa bernama; opsi `-`/kode seluruhnya nol dilewati pada semua tingkat. Desa mencapai 1.000 dipecah ke SLS; SLS mencapai 1.000 dipecah ke SUBSLS. Di bawah batas, dropdown anak tidak dibuka. SUBSLS yang tetap mencapai batas dijeda dan belum dianggap lengkap.
 Dokumen ini menggantikan rancangan satu URL/satu urutan halaman untuk seluruh proyek pada IMPLEMENTATION_PLAN.md.
 
