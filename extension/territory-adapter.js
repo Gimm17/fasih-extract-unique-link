@@ -99,7 +99,7 @@
       throw new F.BotError('Daftar wilayah belum mencapai akhir.','CATALOG',true);
     }
     async selectRegion(panel,option){
-      if(F.isRegionPlaceholder(option)||['SLS','SUBSLS'].includes(option.level))throw new F.BotError('Opsi kosong/SLS/SUBSLS tidak dipilih. Filter otomatis dibatasi sampai desa.','FILTER',true);
+      if(F.isRegionPlaceholder(option))throw new F.BotError('Opsi kosong (-/kode nol) tidak dipilih.','FILTER',true);
       const control=await this.readyGeoControl(panel,option.level);if(this.matches(control,option))return;
       const {popup}=await this.dropdown(panel,option.level);
       let get=()=>[...popup.querySelectorAll('[role="option"]')].filter(el=>{const r=this.option(el,option.level);return r&&r.code===option.code&&r.name===option.name;});
@@ -123,7 +123,7 @@
       const button=this.unique(buttons,'Tutup sidebar Filter Data');await this.pace();button.click();await this.waitUi(()=>!this.visible(panel),'sidebar filter ditutup');
     }
     async applyRecipe(recipe,prefix){
-      if(recipe.length!==4||recipe.some(F.isRegionPlaceholder))throw new F.BotError('Tugas harus memakai kecamatan dan desa valid; opsi - dan SLS/SUBSLS tidak dipilih.','FILTER',true);
+      if(recipe.length<4||recipe.length>6||recipe.some((r,i)=>F.isRegionPlaceholder(r)||r.level!==levels[i]))throw new F.BotError('Tugas harus memakai resep desa/SLS/SUBSLS valid; opsi - tidak dipilih.','FILTER',true);
       this.onActivity('Memasang filter: '+recipe.map(r=>r.name).join(' → '));
       const panel=await this.openFilter();
       for(const option of recipe)await this.selectRegion(panel,option);

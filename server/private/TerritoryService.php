@@ -5,7 +5,7 @@ final class TerritoryService extends Service {
     protected function publicCampaign(array $c): array {
         $owner=$c['import_worker']?$this->one('SELECT id,name,enabled FROM workers WHERE id=? AND campaign_id=?',[$c['import_worker'],$c['id']]):null;
         if($owner)$owner['enabled']=(bool)$owner['enabled'];
-        return parent::publicCampaign($c)+['inventoryMode'=>$c['inventory_mode']??'LEGACY','catalogComplete'=>(bool)($c['catalog_complete']??false),'minimumProtocol'=>($c['inventory_mode']??'LEGACY')==='TERRITORY'?3:1,'inventoryOwner'=>$owner,'territoryDepth'=>'DESA'];
+        return parent::publicCampaign($c)+['inventoryMode'=>$c['inventory_mode']??'LEGACY','catalogComplete'=>(bool)($c['catalog_complete']??false),'minimumProtocol'=>($c['inventory_mode']??'LEGACY')==='TERRITORY'?3:1,'inventoryOwner'=>$owner,'territoryDepth'=>'SUBSLS','splitAt'=>1000];
     }
     public function createCampaign(array $input): array {
         if(($input['territoryMode']??false)&&($input['prefix']??'')!=='7271')throw new ApiError('Mode wilayah awal memakai awalan Kota Palu 7271.');
@@ -36,19 +36,22 @@ final class TerritoryService extends Service {
     }
     private function rid(array $recipe): string { return md5(json_encode(array_map(fn($r)=>[$r['level'],$r['code']],$recipe),JSON_THROW_ON_ERROR)); }
     private function validVillage(array $recipe): bool {
-        if(count($recipe)!==4)return false;
+        return count($recipe)===4&&$this->validPartition($recipe);
+    }
+    private function validPartition(array $recipe): bool {
+        if(count($recipe)<4||count($recipe)>6)return false;
         foreach($recipe as $r)if(preg_match('/^0+$/',(string)$r['code'])||preg_match('/^[-–—]+$/u',self::text($r['name'])))return false;
         return true;
     }
     private function needsVillageCatalog(string $id): bool {
-        foreach($this->partitionList($id) as $p)if(!$this->validVillage($p['recipe'])||$p['state']==='SPLIT')return true;
+        foreach($this->partitionList($id) as $p)if(!$this->validPartition($p['recipe']))return true;
         return false;
     }
     private function repairVillageCatalog(string $id): void {
         $active=(int)$this->query("SELECT COUNT(*) FROM pages WHERE campaign_id=? AND state IN ('RUNNING','REVIEW') AND lease_until>UTC_TIMESTAMP(6)",[$id])->fetchColumn();
         if($active)throw new ApiError('Hentikan semua komputer, sinkronkan hasil, lalu tunggu kunci berakhir sebelum memetakan ulang inventaris sampai desa.',409,'LEASE');
         foreach($this->partitionList($id) as $p){
-            if(!$this->validVillage($p['recipe'])){
+            if(!$this->validPartition($p['recipe'])){
                 // Keep every identity/result/link; only its obsolete filter
                 // location is removed, to be mapped again to a real village.
                 $this->query("UPDATE records SET partition_id=NULL,worker_id=IF(result='RUNNING',NULL,worker_id),result=IF(result='RUNNING','PENDING',result) WHERE campaign_id=? AND partition_id=?",[$id,$p['id']]);
@@ -56,18 +59,21 @@ final class TerritoryService extends Service {
                 $this->query("UPDATE pages a JOIN territory_pages g ON g.campaign_id=a.campaign_id AND g.page_no=a.page_no SET a.state='DONE',a.worker_id=NULL,a.session_id=NULL,a.claim_token=NULL WHERE a.campaign_id=? AND g.partition_id=?",[$id,$p['id']]);
                 $this->query('DELETE FROM territory_pages WHERE campaign_id=? AND partition_id=?',[$id,$p['id']]);
                 $this->query('DELETE FROM partitions WHERE campaign_id=? AND id=?',[$id,$p['id']]);
-            }else{
-                $this->query("UPDATE partitions SET parent_id=NULL,state='NEW',source_total=NULL,observed_total=0,boundary=NULL,sample_json=NULL,worker_id=NULL,session_id=NULL,lease_until=NULL WHERE campaign_id=? AND id=?",[$id,$p['id']]);
-                $this->query("UPDATE pages a JOIN territory_pages g ON g.campaign_id=a.campaign_id AND g.page_no=a.page_no SET a.state='PENDING',a.worker_id=NULL,a.session_id=NULL,a.claim_token=NULL WHERE a.campaign_id=? AND g.partition_id=?",[$id,$p['id']]);
             }
+        }
+        foreach($this->partitionList($id) as $p){
+            $children=(int)$this->query('SELECT COUNT(*) FROM partitions WHERE campaign_id=? AND parent_id=?',[$id,$p['id']])->fetchColumn();
+            if($p['state']==='SPLIT'&&$children)continue;
+            $this->query("UPDATE partitions SET state='NEW',source_total=NULL,observed_total=0,boundary=NULL,sample_json=NULL,worker_id=NULL,session_id=NULL,lease_until=NULL WHERE campaign_id=? AND id=?",[$id,$p['id']]);
+            $this->query("UPDATE pages a JOIN territory_pages g ON g.campaign_id=a.campaign_id AND g.page_no=a.page_no SET a.state='PENDING',a.worker_id=NULL,a.session_id=NULL,a.claim_token=NULL WHERE a.campaign_id=? AND g.partition_id=?",[$id,$p['id']]);
         }
         foreach($this->query('SELECT id,recipe_json FROM regions WHERE campaign_id=?',[$id])->fetchAll(PDO::FETCH_ASSOC) as $r){
             $recipe=json_decode($r['recipe_json'],true);$placeholder=false;
             foreach($recipe as $v)if(preg_match('/^0+$/',(string)$v['code'])||preg_match('/^[-–—]+$/u',self::text($v['name'])))$placeholder=true;
-            if(count($recipe)>4||$placeholder)$this->query('DELETE FROM regions WHERE campaign_id=? AND id=?',[$id,$r['id']]);
+            if($placeholder)$this->query('DELETE FROM regions WHERE campaign_id=? AND id=?',[$id,$r['id']]);
         }
         $this->query('UPDATE campaigns SET catalog_complete=0 WHERE id=?',[$id]);
-        $this->event($id,null,'VILLAGE_CATALOG','Resep kosong (-) dan SLS/SUBSLS lama dilepas; inventaris dipetakan ulang sampai desa. Semua identitas, hasil, link, dan token dipertahankan.');
+        $this->event($id,null,'VILLAGE_CATALOG','Resep kosong (-) dilepas; inventaris dipetakan ulang ke wilayah valid. Pemecahan SLS/SUBSLS valid, identitas, hasil, link, dan token dipertahankan.');
     }
     private function register(string $campaign,array $recipe): string {
         $parent=null;
@@ -130,7 +136,7 @@ final class TerritoryService extends Service {
                 $ids=[];
                 foreach($recipes as $raw) {
                     $recipe=$this->recipe($raw);$region=$this->register($id,$recipe);
-                    if(!$this->validVillage($recipe))throw new ApiError('Katalog hanya boleh berisi kecamatan/desa valid. Opsi - dan SLS/SUBSLS tidak digunakan.',409,'CATALOG');
+                    if(!$this->validVillage($recipe))throw new ApiError('Katalog awal hanya berisi desa valid. SLS/SUBSLS dibuat melalui pemecahan batas 1.000; opsi - tidak digunakan.',409,'CATALOG');
                     $ids[]=$region;
                     $this->query('INSERT IGNORE INTO partitions(campaign_id,id,region_id,recipe_json) VALUES(?,?,?,?)',[$id,$region,$region,json_encode($recipe,JSON_THROW_ON_ERROR)]);
                 }
@@ -142,7 +148,28 @@ final class TerritoryService extends Service {
                 return ['partitions'=>$this->partitionList($id)];
             }
             if($action==='geo_split') {
-                throw new ApiError('Pemecahan otomatis SLS/SUBSLS dinonaktifkan. Inventaris hanya sampai desa.',409,'CAP');
+                $p=$this->part($id,(string)($in['partitionId']??''));$base=json_decode($p['recipe_json'],true);
+                if(!$this->validPartition($base)||!in_array($p['state'],['NEW','SPLIT'],true)||count($base)>=6)throw new ApiError('Wilayah tidak dapat dipecah lagi; perlu pemeriksaan manual.',409,'CAP');
+                $sample=$in['sampleKeys']??[];
+                if(!is_array($sample)||count($sample)!==1000||count(array_unique($sample))!==1000)throw new ApiError('Pemecahan harus menyertakan tepat 1.000 identitas unik batas.',409,'CAP');
+                foreach($sample as $key)if(!is_string($key)||self::key($key)!==$key||!str_starts_with($key,$c['prefix']))throw new ApiError('Identitas contoh pemecahan tidak valid.');
+                $uploaded=(int)$this->query('SELECT COUNT(*) FROM territory_pages WHERE campaign_id=? AND partition_id=?',[$id,$p['id']])->fetchColumn();
+                if($uploaded)throw new ApiError('Induk yang terpotong tidak boleh diunggah sebelum pemecahan.',409,'CAP');
+                $children=$in['recipes']??[];if(!is_array($children)||!$children||count($children)>1000)throw new ApiError('Pilihan wilayah lebih kecil tidak tersedia.',409,'CAP');
+                $recipes=[];
+                foreach($children as $raw){
+                    $r=$this->recipe($raw);$rid=$this->rid($r);
+                    if(!$this->validPartition($r)||count($r)!==count($base)+1||array_slice($r,0,count($base))!==$base||isset($recipes[$rid]))throw new ApiError('Anak wilayah harus valid, unik, dan cocok dengan induknya.',409,'CATALOG');
+                    $recipes[$rid]=$r;
+                }
+                $source=isset($in['sourceTotal'])?(int)$in['sourceTotal']:null;if($source!==null&&$source<1000)throw new ApiError('Total sumber pemecahan kurang dari batas.',409,'COUNT');
+                if($p['state']==='SPLIT'){
+                    $old=$this->query('SELECT id FROM partitions WHERE campaign_id=? AND parent_id=? ORDER BY id',[$id,$p['id']])->fetchAll(PDO::FETCH_COLUMN);$ids=array_keys($recipes);sort($ids);$prior=json_decode($p['sample_json'],true);sort($prior);$sorted=$sample;sort($sorted);
+                    if($old!==$ids||$prior!==$sorted||($p['source_total']===null?null:(int)$p['source_total'])!==$source)throw new ApiError('Resep/contoh pemecahan berubah sejak checkpoint.',409,'CATALOG');
+                }
+                foreach($recipes as $rid=>$r){$this->register($id,$r);$this->query('INSERT IGNORE INTO partitions(campaign_id,id,region_id,parent_id,recipe_json) VALUES(?,?,?,?,?)',[$id,$rid,$rid,$p['id'],json_encode($r,JSON_THROW_ON_ERROR)]);}
+                $this->query("UPDATE partitions SET state='SPLIT',source_total=?,observed_total=1000,sample_json=?,boundary='CAP_1000' WHERE campaign_id=? AND id=?",[$source,json_encode($sample,JSON_THROW_ON_ERROR),$id,$p['id']]);
+                return ['partitions'=>$this->partitionList($id)];
             }
             if($action==='geo_page')return $this->importTerritoryPage($w,$in,$c);
             if($action==='geo_finish_partition') {
@@ -157,10 +184,18 @@ final class TerritoryService extends Service {
             }
             if($action==='geo_finish') {
                 if(!$c['catalog_complete'])throw new ApiError('Penemuan wilayah belum lengkap.',409,'CATALOG');
-                $left=(int)$this->query("SELECT COUNT(*) FROM partitions WHERE campaign_id=? AND state<>'VERIFIED'",[$id])->fetchColumn();
+                $left=(int)$this->query("SELECT COUNT(*) FROM partitions WHERE campaign_id=? AND state NOT IN ('VERIFIED','SPLIT')",[$id])->fetchColumn();
                 $unmapped=(int)$this->query('SELECT COUNT(*) FROM records WHERE campaign_id=? AND partition_id IS NULL',[$id])->fetchColumn();
                 $n=$this->counts($id)['total'];
-                foreach($this->partitionList($id) as $part)if(!$this->validVillage($part['recipe']))throw new ApiError('Katalog lama perlu dipetakan ulang sampai desa. Jalankan Inventaris ke server.',409,'CATALOG');
+                $allParts=$this->partitionList($id,true);
+                foreach($allParts as $part){
+                    if(!$this->validPartition($part['recipe']))throw new ApiError('Katalog lama perlu dipetakan ulang ke wilayah valid. Jalankan Inventaris ke server.',409,'CATALOG');
+                    if($part['state']!=='SPLIT')continue;
+                    $known=[];$base=array_column($part['recipe'],'code');
+                    foreach($allParts as $child)if($child['state']!=='SPLIT'&&count($child['recipe'])>count($base)&&array_slice(array_column($child['recipe'],'code'),0,count($base))===$base)foreach($this->query('SELECT identity_key FROM record_locations WHERE campaign_id=? AND partition_id=?',[$id,$child['id']])->fetchAll(PDO::FETCH_COLUMN) as $key)$known[$key]=true;
+                    foreach(json_decode($part['sample_json']??'[]',true) as $key)if(!isset($known[$key]))throw new ApiError('Pemecahan SLS/SUBSLS kehilangan identitas yang terlihat di induk. Periksa opsi kosong/tidak teralokasi.',409,'COVERAGE');
+                    if($part['source_total']!==null&&count($known)!==(int)$part['source_total'])throw new ApiError('Total pemecahan tidak cocok dengan sumber induk.',409,'COUNT');
+                }
                 if($left||$unmapped||($c['expected_total']&&(int)$c['expected_total']!==$n))throw new ApiError("Inventaris belum siap: $left wilayah belum terverifikasi, $unmapped data lama belum terpetakan; total $n / target ".$c['expected_total'].'. Jangan turunkan target untuk melewati selisih.',409,'COUNT');
                 $this->query("UPDATE pages p JOIN territory_pages g ON g.campaign_id=p.campaign_id AND g.page_no=p.page_no SET p.state='DONE' WHERE p.campaign_id=? AND NOT EXISTS(SELECT 1 FROM records r WHERE r.campaign_id=p.campaign_id AND r.page_no=p.page_no AND r.result='PENDING')",[$id]);
                 $this->query("UPDATE partitions t SET state=IF(EXISTS(SELECT 1 FROM records r WHERE r.campaign_id=t.campaign_id AND r.partition_id=t.id AND r.result='PENDING'),'PENDING','DONE') WHERE campaign_id=? AND state='VERIFIED'",[$id]);
@@ -171,7 +206,7 @@ final class TerritoryService extends Service {
     }
     private function importTerritoryPage(array $w,array $in,array $c): array {
         $id=$c['id'];$p=$this->part($id,(string)($in['partitionId']??''));$page=(int)($in['localPage']??0);$rows=$in['rows']??[];
-        if(!$this->validVillage(json_decode($p['recipe_json'],true)))throw new ApiError('Halaman harus berasal dari desa valid, bukan opsi - atau SLS/SUBSLS.',409,'CATALOG');
+        if(!$this->validPartition(json_decode($p['recipe_json'],true)))throw new ApiError('Halaman harus berasal dari resep desa/SLS/SUBSLS valid, bukan opsi -.',409,'CATALOG');
         if(!in_array($p['state'],['NEW','VERIFIED'],true)||$page<1||$page>10||!is_array($rows)||count($rows)<1||count($rows)>100)throw new ApiError('Halaman wilayah tidak valid.');
         $keys=[];foreach($rows as $r) {
             $f=$r['fields']??[];$key=self::key((string)($f['Kode Identitas']??''));
@@ -220,7 +255,7 @@ final class TerritoryService extends Service {
         if($p&&$p['session_id']!==$session)throw new ApiError('Token masih memiliki wilayah dari sesi lain. Lanjutkan sesi lama.',409,'SESSION');
         if(!$p)$p=$this->one("SELECT * FROM partitions WHERE campaign_id=? AND state='PENDING' ORDER BY recipe_json LIMIT 1 FOR UPDATE",[$id]);
         if(!$p)return ['empty'=>true,'counts'=>$this->counts($id)];
-        if(!$this->validVillage(json_decode($p['recipe_json'],true)))throw new ApiError('Inventaris lama memakai opsi - atau SLS/SUBSLS. Koordinator perlu menjalankan Inventaris ke server untuk pemetaan ulang sampai desa.',409,'CATALOG');
+        if(!$this->validPartition(json_decode($p['recipe_json'],true)))throw new ApiError('Inventaris lama memakai opsi -. Koordinator perlu menjalankan Inventaris ke server untuk pemetaan ulang.',409,'CATALOG');
         $this->query("UPDATE partitions SET state='RUNNING',worker_id=?,session_id=?,lease_until=? WHERE campaign_id=? AND id=?",[$w['id'],$session,$this->lease(),$id,$p['id']]);
         $page=$this->one("SELECT a.* FROM pages a JOIN territory_pages g ON g.campaign_id=a.campaign_id AND g.page_no=a.page_no WHERE a.campaign_id=? AND g.partition_id=? AND a.state IN ('RUNNING','REVIEW','PENDING') ORDER BY g.local_page LIMIT 1 FOR UPDATE",[$id,$p['id']]);
         if(!$page) {

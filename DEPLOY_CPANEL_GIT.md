@@ -1,6 +1,6 @@
 # Deploy FULX lewat Git dan Terminal cPanel
 
-> **Rilis v0.3.4:** untuk pembaruan proyek yang sudah terpasang, ikuti [UPDATE_WILAYAH.md](UPDATE_WILAYAH.md). Migrasi wilayah mempertahankan database, link, dan token; installer tidak perlu dijalankan ulang. Scope awal Kota Palu, prefix 7271, target 11649.
+> **Rilis v0.3.5:** untuk pembaruan proyek yang sudah terpasang, ikuti [UPDATE_WILAYAH.md](UPDATE_WILAYAH.md). Migrasi wilayah mempertahankan database, link, dan token; installer tidak perlu dijalankan ulang. Scope awal Kota Palu, prefix 7271, target 11649.
 
 Domain: **https://fulx.pinnhost.my.id**
 Repository: **https://github.com/Gimm17/fasih-extract-unique-link.git**

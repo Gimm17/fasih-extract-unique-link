@@ -52,15 +52,21 @@ test('opening the filter waits for district controls to finish rendering',async(
  let ticks=0;a.sleep=async()=>{if(++ticks===1)panel.append(group);};
  assert.equal(await a.openFilter(),panel);assert.equal(a.geoControl(panel,'KECAMATAN'),district);assert.ok(ticks>0);
 });
-test('placeholder and below-village recipes never open a dropdown; old SLS selections are cleared',async()=>{
+test('placeholders are excluded at every level; valid SLS/SUBSLS select their exact labelled controls',async()=>{
  const {a,panel,doc,selected}=fixture();await a.openFilter();
  await assert.rejects(a.selectRegion(panel,{level:'KECAMATAN',code:'000',name:'-'}),/tidak dipilih/);
- await assert.rejects(a.selectRegion(panel,{level:'SLS',code:'001',name:'REAL SLS'}),/tidak dipilih/);
- await assert.rejects(a.applyRecipe([...recipe(),{level:'SLS',code:'001',name:'REAL SLS'}],'7271'),/desa valid/);
+ await assert.rejects(a.selectRegion(panel,{level:'SLS',code:'0000',name:'-'}),/tidak dipilih/);
+ await assert.rejects(a.applyRecipe([...recipe(),{level:'SLS',code:'0000',name:'-'}],'7271'),/valid/);
  assert.equal(doc.querySelectorAll('[cmdk-root]').length,0);
  a.geoControl(panel,'SLS').querySelector('span').textContent='[0000] -';a.geoControl(panel,'SUBSLS').querySelector('span').textContent='[00] -';
  for(const r of recipe())await a.selectRegion(panel,r);await a.clearRegion(panel,'SUBSLS');await a.clearRegion(panel,'SLS');a.verifyRecipe(panel,recipe());
  assert.equal(selected.SLS,undefined);assert.equal(selected.SUBSLS,undefined);
+ for(const level of ['SLS','SUBSLS'])await a.selectRegion(panel,{level,code:'001',name:'SLS SATU'});
+ a.verifyRecipe(panel,[...recipe(),...['SLS','SUBSLS'].map(level=>({level,code:'001',name:'SLS SATU'}))]);
+ assert.equal(selected.SLS.code,'001');assert.equal(selected.SUBSLS.code,'001');
+ a.readRows=()=>[];a.emptyPage=()=>true;
+ await a.applyRecipe([...recipe(),...['SLS','SUBSLS'].map(level=>({level,code:'001',name:'SLS SATU'}))],'7271');
+ await a.applyRecipe(recipe(),'7271');await a.openFilter();a.verifyRecipe(panel,recipe());
 });
 function simulation(parts,packets={}){
  const job={id:'geo-job',geoPolicy:'VILLAGE_ONLY',context:F.context(url),options:{prefix:'7271',linkHost:'esurvey.bps.go.id',actionDelayMs:50,nextDelayMs:0,server:{mode:'INVENTORY',territoryMode:true,campaignId:'c',workerId:'w',generation:1}},phase:'INVENTORY',status:'RUNNING',pages:{},visitPages:[],attempted:[]};
@@ -83,25 +89,56 @@ test('inventory uses each village filter and independent local page 1 including 
  assert.deepEqual(s.events.filter(e=>e[0]==='geo_page').map(e=>[e[1].partitionId,e[1].localPage]),[['a',1],['b',1]]);
  assert.equal(s.events.filter(e=>e[0]==='geo_finish_partition').length,3);assert.equal(s.events.filter(e=>e[0]==='filter').length,3);
 });
-test('a leaf that reaches 1000 cannot be finalized or upload a truncated parent',async()=>{
- const p={id:'cap',state:'NEW',recipe:recipe()},pages={};
+test('a deepest SUBSLS leaf that reaches 1000 cannot be finalized or upload a truncated parent',async()=>{
+ const p={id:'cap',state:'NEW',recipe:[...recipe(),{level:'SLS',code:'001',name:'SLS SATU'},{level:'SUBSLS',code:'01',name:'SUB SATU'}]},pages={};
  for(let page=1;page<=10;page++)pages[page]=Array.from({length:100},(_,i)=>({fields:fields('7271000000000000 - EC - 1 - '+((page-1)*100+i),'CAWI')}));
  const s=simulation([p],{cap:pages});await s.runner.start(s.job);assert.equal(s.store.job.status,'PAUSED');assert.match(s.store.job.notice,/1.000/);
  assert.equal(s.events.some(e=>e[0]==='geo_page'||e[0]==='geo_finish'),false);assert.equal(s.store.job.geoScan.pages[10].length,100);
- assert.equal(s.events.some(e=>e[0]==='geo_split'),false);assert.match(s.store.job.notice,/SLS\/SUBSLS tidak dipilih/);
+ assert.equal(s.events.some(e=>e[0]==='geo_split'),false);assert.match(s.store.job.notice,/manual/);
 });
+test('resuming a capped village splits to SLS then SUBSLS only at the cap and uploads complete leaves',async()=>{
+ const parent={id:'v',state:'NEW',recipe:recipe()},small={id:'small',state:'NEW',recipe:recipe('005','BARU')},parts=[parent,small];
+ const row=i=>({fields:fields('7271000000000000 - EC - 1 - '+i,'CAWI')}),paginate=rows=>Object.fromEntries(Array.from({length:Math.ceil(rows.length/100)},(_,i)=>[i+1,rows.slice(i*100,(i+1)*100)]));
+ const thousand=Array.from({length:1000},(_,i)=>row(i)),packets={v:paginate(thousand),small:{1:[row(1001)]}},s=simulation(parts,packets);
+ // Preserve the buffered v0.3.4 scan when enabling conditional splitting.
+ s.job.geoScan={id:'v',cursor:1,pages:Object.fromEntries(Object.entries(packets.v).map(([p,rs])=>[p,rs.map(r=>({key:F.key(r.fields['Kode Identitas']),fields:r.fields}))]))};
+ const originalApply=s.a.applyRecipe;s.a.applyRecipe=async r=>{s.a.location.assign(url);return originalApply(r);};
+ let active;s.a.openFilter=async()=>({});s.a.verifyRecipe=(_,r)=>{active=r;};s.a.closeFilter=async()=>{};
+ s.a.enumerate=async(_,level)=>{s.events.push(['enumerate',level]);return [1,2].map(n=>({level,code:'00'+n,name:level+' '+n,value:'00'+n+' '+level+' '+n}));};
+ const original=s.runner.send;s.runner.send=async m=>{
+  if(m.type==='REMOTE'&&m.action==='geo_split'){
+   s.events.push([m.action,m.data]);assert.deepEqual(m.data.recipes.map(r=>r.slice(0,-1)),[active,active]);assert.equal(new Set(m.data.sampleKeys).size,1000);
+   const p=parts.find(p=>p.id===m.data.partitionId);p.state='SPLIT';
+   m.data.recipes.forEach((r,i)=>{const id=p.id+'-'+i;parts.push({id,state:'NEW',recipe:r});packets[id]=r.length===5?(i===0?paginate(thousand):{}):paginate(thousand.slice(i*500,(i+1)*500));});
+   return {partitions:structuredClone(parts)};
+  }
+  if(m.type==='REMOTE'&&m.action==='geo_finish_partition')parts.find(p=>p.id===m.data.partitionId).state='VERIFIED';
+  return original(m);
+ };
+ await s.runner.start(s.job);assert.equal(s.store.job.status,'COMPLETE',s.store.job.notice);assert.equal(s.saved.size,1001);
+ assert.deepEqual(s.events.filter(e=>e[0]==='enumerate').map(e=>e[1]),['SLS','SUBSLS']);
+ const uploads=s.events.filter(e=>e[0]==='geo_page');assert.equal(uploads.some(e=>['v','v-0'].includes(e[1].partitionId)),false);
+ assert.equal([...s.saved.values()].filter(r=>r.fields.SUBSLS).length,1000);assert.equal(s.store.job.geoPolicy,'VILLAGE_CAP_SPLIT');
+});
+
+test('a capped village with no valid SLS pauses without uploading its truncated sample',async()=>{
+ const p={id:'v',state:'NEW',recipe:recipe()},pages={};for(let n=1;n<=10;n++)pages[n]=Array.from({length:100},(_,i)=>({fields:fields('7271000000000000 - EC - 1 - '+(n*100+i),'CAWI')}));
+ const s=simulation([p],{v:pages});s.a.openFilter=async()=>({});s.a.verifyRecipe=()=>{};s.a.enumerate=async()=>[];s.a.closeFilter=async()=>{};
+ await s.runner.start(s.job);assert.equal(s.store.job.status,'PAUSED');assert.match(s.store.job.notice,/SLS valid kosong/);assert.equal(s.events.some(e=>['geo_split','geo_page','geo_finish'].includes(e[0])),false);
+});
+
 test('an old placeholder scan is discarded locally and real village inventory starts from page 1',async()=>{
  const p={id:'a',state:'NEW',recipe:recipe()},s=simulation([p],{a:{1:[{fields:fields('7271000000000000 - EC - 1 - 9','CAWI')}]}});
  delete s.job.geoPolicy;s.job.geoDiscovery={signature:'old-000-branch',recipes:[]};s.job.geoScan={id:'old-000',cursor:10,pages:{10:[{key:'old',fields:{}}]}};
  const f=fields('7271000000000000 - EC - 1 - 9','CAWI'),prior={key:F.key(f['Kode Identitas']),fields:{...f,SLS:'0000 -',SUBSLS:'00 -'},link:'https://esurvey.bps.go.id/h/s/retained',result:'DONE'};
- await s.runner.start(s.job,[prior]);assert.equal(s.store.job.status,'COMPLETE',s.store.job.notice);assert.equal(s.store.job.geoPolicy,'VILLAGE_ONLY');assert.equal(s.store.job.geoDiscovery,null);assert.equal(s.saved.size,1);const saved=[...s.saved.values()][0];assert.equal(saved.result,'DONE');assert.equal(saved.link,prior.link);assert.equal(saved.fields.SLS,undefined);assert.equal(saved.fields.DESA,'004 UJUNA');
+ await s.runner.start(s.job,[prior]);assert.equal(s.store.job.status,'COMPLETE',s.store.job.notice);assert.equal(s.store.job.geoPolicy,'VILLAGE_CAP_SPLIT');assert.equal(s.store.job.geoDiscovery,null);assert.equal(s.saved.size,1);const saved=[...s.saved.values()][0];assert.equal(saved.result,'DONE');assert.equal(saved.link,prior.link);assert.equal(saved.fields.SLS,undefined);assert.equal(saved.fields.DESA,'004 UJUNA');
 });
 test('restored per-village page signatures detect changed membership before upload',async()=>{
  const p={id:'a',state:'NEW',recipe:recipe()},s=simulation([p],{a:{1:[{fields:fields('7271000000000000 - EC - 1 - 9','CAWI')}]}});
  s.job.geoScan={id:'a',cursor:1,pages:{1:[{key:'7271000000000000-EC-1-8',fields:{}}]}};await s.runner.start(s.job);assert.equal(s.store.job.status,'PAUSED');assert.match(s.store.job.notice,/berubah saat resume/);assert.equal(s.events.some(e=>e[0]==='geo_page'),false);
 });
-test('extraction applies the claimed village and local page while checkpoints use the server package ID',async()=>{
- const p={id:'a',state:'PENDING',recipe:recipe()},first=fields('7271000000000000 - EC - 1 - 1','CAWI'),second=fields('7271000000000000 - EC - 1 - 2','CAWI');
+test('extraction applies the claimed SUBSLS recipe and local page while checkpoints use the server package ID',async()=>{
+ const p={id:'a',state:'PENDING',recipe:[...recipe(),{level:'SLS',code:'001',name:'SLS SATU'},{level:'SUBSLS',code:'01',name:'SUB SATU'}]},first=fields('7271000000000000 - EC - 1 - 1','CAWI'),second=fields('7271000000000000 - EC - 1 - 2','CAWI');
  const s=simulation([p],{a:{1:[{fields:first}],2:[{fields:second}]}});s.job.options.server.mode='WORK';let claimed=false;
  const original=s.runner.send;s.runner.send=async m=>{
   if(m.type==='REMOTE'&&m.action==='geo_claim'){if(claimed)return {empty:true,counts:{pending:0,running:0,error:0,review:0}};claimed=true;return {page:87,localPage:2,partitionId:p.id,recipe:p.recipe,claimToken:'token',leaseSeconds:300,keys:[F.key(second['Kode Identitas'])],rows:[{key:F.key(second['Kode Identitas']),fields:second,result:'PENDING',page:87,attempts:0}]};}
@@ -110,4 +147,5 @@ test('extraction applies the claimed village and local page while checkpoints us
  s.a.findRow=k=>s.a.readRows().find(r=>F.key(r.fields['Kode Identitas'])===k);let links=0;s.a.getLink=async()=>{links++;return {link:'https://esurvey.bps.go.id/h/s/geo-page-2',dialog:{}};};s.a.closeDialog=async()=>{};
  await s.runner.start(s.job);assert.equal(s.store.job.status,'COMPLETE',s.store.job.notice);assert.equal(F.context(s.a.location.href).page,2);assert.equal(links,1);
  const checkpoints=s.events.filter(e=>e[0]==='checkpoint');assert.ok(checkpoints.length);assert.equal(checkpoints.every(e=>e[1].page===87),true);assert.equal([...s.saved.values()][0].result,'DONE');
+ assert.deepEqual(s.events.find(e=>e[0]==='filter')[1],p.recipe);
 });

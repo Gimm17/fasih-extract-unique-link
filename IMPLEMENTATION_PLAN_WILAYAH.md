@@ -2,8 +2,8 @@
 
 Tanggal: 9 Oktober 2026. Dasar kode: v0.2.4. Usulan rilis besar: v0.3.0.
 
-Status: telah diimplementasikan dan diperbarui sampai v0.3.4; deployment hosting dilakukan melalui Git pull pengguna.
-Arahan terbaru 9 Oktober 2026: otomatisasi hanya sampai desa bernama, opsi `-`/kode seluruhnya nol dilewati, SLS/SUBSLS dikosongkan tanpa memilih opsinya. Instruksi ini menggantikan rancangan pemecahan lebih dalam di bawah. Desa yang mencapai 1.000 dijeda dan belum dianggap lengkap.
+Status: telah diimplementasikan dan diperbarui sampai v0.3.5; deployment hosting dilakukan melalui Git pull pengguna.
+Arahan terbaru 9 Oktober 2026: otomatisasi mulai per desa bernama; opsi `-`/kode seluruhnya nol dilewati pada semua tingkat. Desa mencapai 1.000 dipecah ke SLS; SLS mencapai 1.000 dipecah ke SUBSLS. Di bawah batas, dropdown anak tidak dibuka. SUBSLS yang tetap mencapai batas dijeda dan belum dianggap lengkap.
 Dokumen ini menggantikan rancangan satu URL/satu urutan halaman untuk seluruh proyek pada IMPLEMENTATION_PLAN.md.
 
 ## 1. Tujuan dan dasar keputusan
@@ -77,7 +77,7 @@ Karena setiap pilihan langsung menerapkan filter, pemilihan kecamatan dapat memi
 | Total setelah filter | Apakah angka khusus hasil desa tersedia, atau hanya angka SEMUA/global | Menentukan bukti kelengkapan desa |
 | Efek pergantian filter | URL, chip, isi kartu, urutan, dan reset halaman | Menentukan kapan halaman baru benar-benar siap |
 | Persistensi filter | Per tab, browser, atau akun; uji dua komputer pada wilayah berbeda | Mencegah filter satu komputer mengubah sumber komputer lain |
-| Desa mencapai batas | Nama desa dan jumlah yang teramati | Menjeda tanpa turun ke SLS/SUBSLS atau menyatakan inventaris lengkap |
+| Desa mencapai batas | Nama desa dan jumlah yang teramati | Memecah ke SLS/SUBSLS valid hanya saat batas tercapai; memeriksa cakupan identitas induk |
 | Cakupan target 11.649 | Kota Palu telah dikonfirmasi; verifikasi periode, status, dan pencarian dasar yang berlaku | Menentukan angka pembanding yang benar |
 
 Pemeriksaan filter dipisahkan dari operasi pengambilan link. Tidak perlu mengekspor semua class; cukup contoh kontrol wilayah, opsi beserta nilai, indikator filter aktif, dan hasil setelah satu pergantian wilayah. Selector dipilih dari DOM aktual, bukan ditebak dari screenshot.
@@ -133,7 +133,7 @@ Aturan utama: hasil yang mencapai 1.000 dianggap berpotensi terpotong sampai ada
 | Total terfilter tidak tersedia | Catat sebagai tidak diketahui, bukan nol; tampilkan tingkat verifikasi dan lakukan rekonsiliasi global/master |
 | Belum ada cara memperkecil filter | Tandai Terblokir batas FASIH; wilayah lain boleh dilanjutkan, kelengkapan global tetap belum terpenuhi |
 
-Pembagian kerja otomatis berhenti sampai desa. Pemecahan SLS/SUBSLS dan kriteria nonwilayah dinonaktifkan sesuai arahan terbaru. Desa yang mencapai batas tidak dinyatakan lengkap dan proses dijeda dengan nama desa untuk pemeriksaan.
+Pemecahan otomatis turun ke SLS hanya saat desa mencapai 1.000, lalu ke SUBSLS hanya saat SLS mencapai 1.000. Opsi placeholder dilewati. Induk bertanda SPLIT tidak diunggah sebagai inventaris terpotong. Seluruh contoh identitas induk wajib ditemukan pada hasil anak, dan total unik proyek tetap cocok dengan target. Jika SUBSLS tetap mencapai batas atau opsi anak valid kosong, proses dijeda.
 
 Jika anak sudah dipakai, hasil induk menjadi bukti pembanding dan tidak ikut dijumlahkan sebagai data tambahan. Jika sebagian hasil induk sudah masuk sebelum batas ditemukan, jadikan hasil sementara lalu rekonsiliasi ke bagian anak berdasarkan identitas lengkap. Jangan mengantrikan induk dan anak untuk ekstraksi sekaligus.
 
@@ -174,7 +174,7 @@ Pilihan ini mengurangi pergantian filter dan menghindari dua komputer mengerjaka
 Alur ekstraksi setiap komputer:
 
 1. Minta satu paket bagian wilayah dari server beserta resep filter lengkap, revisi inventaris, dan identitas assignment target.
-2. Buka Filter Data; pilih provinsi/kabupaten/kota, kecamatan, dan desa bernama. Kosongkan pilihan SLS/SUBSLS lama melalui ikon X, tanpa membuka dropdown atau memilih opsinya. Jangan memakai Reset global.
+2. Buka Filter Data; pilih provinsi/kabupaten/kota, kecamatan, dan desa bernama. Jika paket berasal dari pemecahan batas 1.000, pilih juga SLS/SUBSLS sesuai resep server. Kosongkan filter anak di luar resep melalui X. Jangan memakai Reset global.
 3. Tunggu dropdown turunan sesuai induknya; setiap pilihan otomatis diterapkan. Baca kembali pilihan lengkap lalu tutup sidebar melalui Close.
 4. Tunggu hasil akhir siap pada view=list dan 100 kartu per halaman. Untuk paket baru mulai halaman 1; untuk resume, terapkan filter yang sama dahulu baru arahkan ke halaman checkpoint dan verifikasi ulang.
 5. Cocokkan konteks filter dan identitas kartu dengan inventaris bagian yang diklaim. Nomor halaman/urutan baris saja tidak cukup untuk menentukan assignment.

@@ -1,17 +1,17 @@
 # FULX — FASIH Unique Link eXtractor
 
-**v0.3.4** · ekstensi Chrome + server PHP/MySQL + dashboard untuk 5 komputer.
+**v0.3.5** · ekstensi Chrome + server PHP/MySQL + dashboard untuk 5 komputer.
 
 Ekstraksi assignment **OPEN yang sudah CAWI**, pada **view=list**. Perubahan mode, pengiriman email/pesan, dan save mode tidak dijalankan. Kolom opsional yang tidak tampil boleh kosong. Default jeda aksi 0,50 detik; antar data 1 detik, bisa diatur melalui panel.
 
 ## Wilayah Kota Palu
 
-Batas 1.000 FASIH diatasi melalui dropdown kecamatan → desa, dengan memilih hanya kecamatan/desa bernama dan melewati opsi -; filter otomatis berhenti sampai desa. Inventaris dan ekstraksi menggunakan resep filter yang sama. Dashboard memiliki Progres wilayah, rekap unik, pemetaan data lama, dan penguncian desa per komputer. [UPDATE_WILAYAH.md](UPDATE_WILAYAH.md) menjelaskan Git pull, migrasi tanpa reset, dan urutan menjalankan lima komputer.
+Batas 1.000 FASIH diatasi melalui dropdown kecamatan → desa, dengan melewati opsi -. Desa yang mencapai 1.000 dipecah ke SLS; SLS yang mencapai 1.000 dipecah ke SUBSLS. Desa kecil tidak membuka dropdown anak. Inventaris dan ekstraksi menggunakan resep filter yang sama. Dashboard memiliki Progres wilayah, rekap unik, pemetaan data lama, dan penguncian desa per komputer. [UPDATE_WILAYAH.md](UPDATE_WILAYAH.md) menjelaskan Git pull, migrasi tanpa reset, dan urutan menjalankan lima komputer.
 
 ## Paket distribusi
 
-- `dist/fasih-cawi-link-exporter-v0.3.4.zip` — ekstensi siap Load unpacked setelah diekstrak.
-- `dist/fulx-cpanel-server-v0.3.4.zip` — dashboard dan backend untuk **fulx.pinnhost.my.id**.
+- `dist/fasih-cawi-link-exporter-v0.3.5.zip` — ekstensi siap Load unpacked setelah diekstrak.
+- `dist/fulx-cpanel-server-v0.3.5.zip` — dashboard dan backend untuk **fulx.pinnhost.my.id**.
 - [INSTALL.md](INSTALL.md) — panduan cPanel, database, 5 token komputer, pemulihan, dan ekspor.
 - [DEPLOY_CPANEL_GIT.md](DEPLOY_CPANEL_GIT.md) — pemasangan lewat Terminal cPanel dengan git clone, pembaruan git pull, backup konfigurasi, dan rollback.
 
@@ -21,7 +21,7 @@ Versi ZIP lama dipertahankan. Paket server tidak berisi credential, hasil penggu
 
 1. Ekstrak ZIP ke folder permanen, atau gunakan folder `extension` proyek ini.
 2. Buka `chrome://extensions`, aktifkan Developer mode, pilih Load unpacked dan folder yang berisi manifest.json.
-3. Jika sudah terpasang, perbarui folder pemasangan yang sama, klik Reload, lalu refresh FASIH. Pastikan panel **FULX v0.3.4**.
+3. Jika sudah terpasang, perbarui folder pemasangan yang sama, klik Reload, lalu refresh FASIH. Pastikan panel **FULX v0.3.5**.
 4. Login FASIH, gunakan view=list dan 100 kartu per halaman. Filter, pencarian dan urutan data harus sesuai proyek.
 
 ## Pekerjaan bersama pada server
@@ -62,6 +62,6 @@ node scripts/package.cjs
 
 Tes PHP/MySQL memerlukan runtime lokal dan database fixture khusus. Pada workspace Windows ini `node scripts/start-test-server.cjs` menyalakan PHP/MariaDB portable dari `.tools` di loopback port 9079/3319. Tes integrasi hanya menghapus database fixture `fulx_test` pada port 3319, tidak boleh diarahkan ke produksi. Semua data browser/API fiktif; browser fixture FASIH tidak menghubungi situs produksi.
 
-Paket 0.3.4 diuji dengan PHP 8.5.11/MariaDB 10.11.14 lokal; kode PHP kompatibel dengan fitur PHP 8.3. Pemasangan cPanel dan ekstraksi data FASIH produksi belum dilakukan. Ringkasan teknis/riwayat: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+Paket 0.3.5 diuji dengan PHP 8.5.11/MariaDB 10.11.14 lokal; kode PHP kompatibel dengan fitur PHP 8.3. Pemasangan cPanel dan ekstraksi data FASIH produksi belum dilakukan. Ringkasan teknis/riwayat: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 Tombol **Unduh ekstensi (ZIP)** pada header dashboard menyediakan versi yang dibundel dengan server. Setiap `node scripts/package.cjs` menyalin ZIP versi saat ini ke `server/public/downloads` dan memperbarui tombol. Deploy seluruh hasil commit dengan `git pull --ff-only` agar tombol dan ZIP tetap sesuai.

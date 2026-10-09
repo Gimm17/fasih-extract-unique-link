@@ -69,11 +69,12 @@
       await this.patch({phase:'INVENTORY',operation:'EXTRACT_LINK',processingView:'list'});
       const begin=await this.remote('geo_begin',{url:info.campaign.sourceUrl});
       if(begin.finished){await this.patch({phase:'FINISHED',status:'COMPLETE',inventoryComplete:true,navigating:null,notice:'Inventaris wilayah sudah lengkap di server.'});return;}
-      if(this.job.geoPolicy!=='VILLAGE_ONLY'||begin.catalogChanged)await this.patch({geoPolicy:'VILLAGE_ONLY',geoDiscovery:null,geoScan:null,activeRecipe:null,navigating:null,notice:'Inventaris dilanjutkan hanya pada kecamatan/desa valid. Checkpoint cabang - atau SLS/SUBSLS lama dilewati.'});
+      if(!['VILLAGE_ONLY','VILLAGE_CAP_SPLIT'].includes(this.job.geoPolicy)||begin.catalogChanged)await this.patch({geoDiscovery:null,geoScan:null,activeRecipe:null,navigating:null,notice:'Katalog wilayah diperiksa ulang; cabang - dilewati.'});
+      await this.patch({geoPolicy:'VILLAGE_CAP_SPLIT'});
       let parts=begin.catalogComplete?begin.partitions:await this.discover();
       for(let index=0;index<parts.length;index++) {
         const part=parts[index];if(part.state!=='NEW')continue;
-        if(part.recipe.length!==4||part.recipe.some(F.isRegionPlaceholder))throw new F.BotError('Katalog server masih memuat opsi - atau wilayah di bawah desa. Perbarui server melalui git pull.','CATALOG',true);
+        if(part.recipe.length<4||part.recipe.length>6||part.recipe.some(F.isRegionPlaceholder))throw new F.BotError('Katalog server memuat resep wilayah tidak valid atau opsi -. Perbarui server melalui git pull.','CATALOG',true);
         this.transition=true;this.guard();
         await this.adapter.applyRecipe(part.recipe,this.job.options.prefix);
         let scan=this.job.geoScan?.id===part.id?this.job.geoScan:{id:part.id,pages:{},cursor:1};
@@ -102,7 +103,14 @@
         }
         this.transition=true;
         if(boundary==='CAP_1000') {
-          throw new F.BotError('Desa '+part.recipe.at(-1).name+' mencapai batas 1.000 data. Inventaris desa ini belum dapat dinyatakan lengkap. Proses dijeda; SLS/SUBSLS tidak dipilih.','CAP',true);
+          const level=F.territoryLevels[part.recipe.length];
+          if(!level)throw new F.BotError('SUBSLS '+part.recipe.at(-1).name+' masih mencapai batas 1.000 data. Perlu pemecahan tambahan manual; inventaris belum lengkap.','CAP',true);
+          const panel=await this.adapter.openFilter();
+          this.adapter.verifyRecipe(panel,part.recipe);
+          const children=await this.adapter.enumerate(panel,level);await this.adapter.closeFilter(panel);
+          if(!children.length)throw new F.BotError(part.recipe.at(-1).name+' mencapai 1.000 data tetapi pilihan '+level+' valid kosong. Periksa wilayah; opsi - tidak digunakan.','CAP',true);
+          parts=(await this.remote('geo_split',{partitionId:part.id,sampleKeys:Object.values(scan.pages).flatMap(rows=>rows.map(r=>r.key)),recipes:children.map(r=>[...part.recipe,r])})).partitions;
+          await this.patch({geoScan:null,notice:part.recipe.at(-1).name+' mencapai 1.000; dilanjutkan per '+level+'.'});index=-1;continue;
         }
         const records=[];
         for(const [page,snapshot] of Object.entries(scan.pages)) {
