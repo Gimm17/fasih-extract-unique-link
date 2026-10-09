@@ -10,8 +10,8 @@
   shadow.innerHTML=`<style>
     *{box-sizing:border-box}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #cbd5e1;border-radius:7px;padding:9px;background:white;color:#183042}button:disabled{opacity:.45;cursor:default}.primary{background:#ee7918;border-color:#ee7918;color:white;font-weight:650}.panel{width:360px;max-height:calc(100vh - 150px);overflow:auto;background:#fff;border:1px solid #ccd7e0;border-radius:12px;box-shadow:0 8px 35px #16314630}.head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#fff3e8;border-bottom:1px solid #e2e8f0}.head strong{font-size:16px}.body{padding:16px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:12px;font-weight:650}input,select{padding:8px;border:1px solid #ccd7e0;border-radius:6px;width:100%;background:white;color:#183042}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.muted{font-size:12px;line-height:1.5;color:#526b7c}.notice{font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border:1px solid #e2e8f0;background:#f7fafc;padding:10px;border-radius:7px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.stat{padding:8px;background:#f1f6fa;border-radius:6px;font-size:11px}.stat b{display:block;font-size:19px;color:#244a64}.hidden{display:none}.mini{box-shadow:0 4px 15px #16314620;background:#fff3e8}.meter{height:6px;background:#edf2f6;border-radius:6px;overflow:hidden}.meter div{height:100%;background:#ee7918;width:0}a{color:#244a64}
     .working{width:280px}.working .body{padding:10px;gap:8px}.working .body>*{display:none}.working .body>#state,.working .body>#notice,.working .body>#reset,.working .body>#resetConfirm:not(.hidden){display:block}.working .body>#controls,.working .body>.stats{display:grid}.working .head{padding:10px}.working .head strong{font-size:13px}
-  </style><button class="mini hidden" id="mini">FULX · v0.2.3</button><section class="panel" id="panel">
-    <div class="head"><strong>FULX · v0.2.3</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
+  </style><button class="mini hidden" id="mini">FULX · v0.2.4</button><section class="panel" id="panel">
+    <div class="head"><strong>FULX · v0.2.4</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
     <div class="body"><div class="notice" id="notice" role="status" aria-live="polite">Mulai dengan Cek data halaman. Untuk mode server, buka URL proyek lalu jalankan Inventaris ke server dari komputer Koordinator.</div><div class="muted">LIST · ekstrak unique link · hanya OPEN dan CAWI<br>Kolom opsional yang tidak tampil boleh kosong.</div>
     <label>Wilayah<select id="region"><option value="Palu">Kota Palu</option><option value="Sulteng">Seluruh Sulawesi Tengah</option></select></label>
     <div class="row"><label>Awalan kode wilayah<input id="prefix" value="7271" inputmode="numeric" maxlength="16"></label><label>Domain link survei<input id="linkHost" value="esurvey.bps.go.id"></label></div>
@@ -138,7 +138,19 @@
       throw new Error('Inventaris/tugas belum dimulai: URL atau pencarian berbeda dari proyek dashboard.\nPencarian tab: '+JSON.stringify(current.searchParams.get('search')||'')+'\nPencarian proyek: '+JSON.stringify(expected.searchParams.get('search')||'')+'\nHuruf besar/kecil, spasi, dan parameter lain harus sama. Klik Buka URL proyek, periksa filter wilayah, lalu coba kembali.');
     }
     const prior=await readLatest();
-    if(prior?.job.options.server&&prior.job.phase!=='FINISHED'&&prior.job.status!=='COMPLETE')throw new Error('Proses server sebelumnya belum selesai. Gunakan Lanjutkan/Coba ulang gagal untuk mempertahankan kepemilikan tugas.');
+    if(prior?.job.options.server&&prior.job.phase!=='FINISHED'&&prior.job.status!=='COMPLETE'){
+      const old=prior.job,s=old.options.server;
+      const empty=mode==='INVENTORY'&&s.mode==='INVENTORY'&&old.phase==='INVENTORY'&&['PAUSED','STOPPED'].includes(old.status)&&
+        prior.rows.length===0&&Object.keys(old.pages||{}).length===0&&!old.remoteClaim&&
+        s.campaignId===opts.server.campaignId&&s.workerId===opts.server.workerId&&s.generation===opts.server.generation;
+      if(!empty)throw new Error('Proses server sebelumnya belum selesai. Gunakan Lanjutkan/Coba ulang gagal untuk mempertahankan kepemilikan tugas.');
+      // No records or claimed work exist: recover the same inventory session
+      // after validating the current tab against the server campaign above.
+      let job=await send({type:'CLAIM',id:old.id});
+      job=await send({type:'PATCH',id:old.id,patch:{context:F.context(location.href),options:opts,navigating:null,notice:''}});
+      await send({type:'SET_SETTINGS',settings:F.timings(opts)});
+      await runner.resume(job,prior.rows);return;
+    }
     await send({type:'SET_SETTINGS',settings:F.timings(opts)});
     const job=await send({type:'CREATE',options:opts});await runner.start(job);
   }

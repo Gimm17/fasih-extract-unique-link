@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
-const {indexedDB}=require('fake-indexeddb'),{randomUUID}=require('node:crypto');
+const {indexedDB,IDBFactory}=require('fake-indexeddb'),{randomUUID}=require('node:crypto');
 const {fields}=require('./fixtures.cjs');
 const folder=path.resolve(__dirname,'../extension');
 test('service-worker bridge persists results, scopes access and prevents competing tabs',async()=> {
@@ -37,4 +37,24 @@ test('service-worker bridge persists results, scopes access and prevents competi
   assert.equal((await call({type:'LATEST'})).value,undefined);
   assert.equal((await call({type:'GET_SETTINGS'})).value,undefined);
   assert.equal((await call({type:'READ',id},exportSender)).value.rows.length,0);
+});
+
+test('new job captures the current SPA tab URL rather than stale message sender query and blocks changed survey scope',async()=>{
+ let listener;
+ const initial='https://fasih-sm.bps.go.id/app/surveys/spa/period/data?page=1&perPage=100&search=-+ec+-&view=list';
+ let current=initial.replace('-+ec+-','-+EC+-');
+ const ctx=vm.createContext({indexedDB:new IDBFactory(),URL,Date,Set,Map,console,crypto:{randomUUID},
+  chrome:{runtime:{id:'fixture-extension',getURL:f=>'chrome-extension://fixture-extension/'+f,onMessage:{addListener:fn=>listener=fn}},
+   tabs:{get:async()=>({id:1,url:current}),create:async()=>{},query:async()=>[],sendMessage:async()=>{}},action:{onClicked:{addListener:()=>{}}}}});
+ ctx.importScripts=(...files)=>files.forEach(file=>vm.runInContext(fs.readFileSync(path.join(folder,file),'utf8'),ctx));
+ vm.runInContext(fs.readFileSync(path.join(folder,'background.js'),'utf8'),ctx);
+ const sender={id:'fixture-extension',tab:{id:1},url:initial};
+ const call=msg=>new Promise(resolve=>listener(msg,sender,resolve));
+ const made=await call({type:'CREATE',options:{prefix:'72'}});
+ assert.equal(made.ok,true);assert.equal(made.value.context.signature,ctx.Fasih.context(current).signature);
+ assert.equal(new URL(made.value.context.url).searchParams.get('search'),'- EC -');
+ await call({type:'PATCH',id:made.value.id,patch:{status:'STOPPED'}});
+ current=current.replace('/spa/','/other-survey/');
+ const blocked=await call({type:'CREATE',options:{prefix:'72'}});
+ assert.equal(blocked.ok,false);assert.match(blocked.error,/Survei tab berubah/);
 });

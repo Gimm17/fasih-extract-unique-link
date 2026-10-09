@@ -16,7 +16,7 @@
       if(this.adapter.doc.hidden) throw new F.BotError('Tab FASIH berada di latar. Aktifkan tab lalu lanjutkan.', 'CONTROL',true);
       const current=F.context(this.adapter.location.href);
       if(current.view!=='list')throw new F.BotError('Tampilan berubah. Gunakan view=list untuk melanjutkan.','VIEW',true);
-      if(current.signature!==this.job.context.signature) throw new F.BotError('Survei, pencarian, atau ukuran halaman berubah.', 'CONTEXT',true);
+      if(current.signature!==this.job.context.signature) throw new F.BotError('Survei, pencarian, atau ukuran halaman berubah.\nURL proses: '+this.job.context.url+'\nURL tab: '+current.url+'\nBuka URL proyek yang sesuai. Inventaris yang masih kosong dapat dipulihkan lewat Inventaris ke server.', 'CONTEXT',true);
       if(this.job.filterStamp!==undefined && this.adapter.filterStamp()!==this.job.filterStamp) throw new F.BotError('Filter halaman berubah.', 'FILTER',true);
       if(this.job.phase==='PROCESS' && this.job.pages[current.page]) {
         const expected=this.job.pages[current.page].split('|').sort().join('|');

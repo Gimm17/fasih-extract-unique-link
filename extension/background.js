@@ -61,7 +61,11 @@ async function handle(msg, sender) {
     const priorId = await FasihStore.latest(ctx.scope);
     const prior = priorId && await FasihStore.getJob(priorId);
     if (prior?.status === 'RUNNING') throw new Error('Proses sebelumnya masih berjalan. Jeda/hentikan dahulu.');
-    const startUrl = new URL(sender.url); startUrl.searchParams.set('perPage', '100'); startUrl.searchParams.set('view','list');
+    // FASIH can update its URL through history.pushState without reloading the
+    // content-script document. Sender metadata can still carry the older query.
+    const tab=await chrome.tabs.get(sender.tab.id),current=Fasih.context(tab.url);
+    if(current.scope!==ctx.scope)throw new Error('Survei tab berubah. Muat ulang FASIH sebelum memulai proses.');
+    const startUrl = new URL(current.url); startUrl.searchParams.set('perPage', '100'); startUrl.searchParams.set('view','list');
     const job = { id: crypto.randomUUID(), context: Fasih.context(startUrl.href), options: {...msg.options,...timing},
       status: 'RUNNING', phase: 'INVENTORY', owner: sender.tab.id, createdAt: new Date().toISOString(),
       pages: {}, visitPages: [], processPages: [], attempted: [], notice: '', navigating: null };

@@ -1,4 +1,4 @@
-# Pasang FULX v0.2.3 di cPanel
+# Pasang FULX v0.2.4 di cPanel
 
 Target: **https://fulx.pinnhost.my.id** · **5 komputer** · **11.649 assignment**.
 Nama aplikasi: **FULX — FASIH Unique Link eXtractor**.
@@ -34,7 +34,7 @@ Folder `private` harus berada di luar document root:
     .htaccess
 ```
 
-Di File Manager, aktifkan **Show Hidden Files** supaya `.htaccess` ikut terunggah. Ekstrak `fulx-cpanel-server-v0.2.3.zip` ke `/home/NAMA_AKUN/fulx`. Isi ZIP sudah memiliki folder `public` dan `private`; jangan meletakkan seluruh paket di document root.
+Di File Manager, aktifkan **Show Hidden Files** supaya `.htaccess` ikut terunggah. Ekstrak `fulx-cpanel-server-v0.2.4.zip` ke `/home/NAMA_AKUN/fulx`. Isi ZIP sudah memiliki folder `public` dan `private`; jangan meletakkan seluruh paket di document root.
 
 Jika cPanel mengharuskan root subdomain berada di bawah `public_html`, gunakan contoh `/home/NAMA_AKUN/public_html/flux/public` sebagai document root. Pastikan domain lain juga tidak dapat membuka folder saudaranya `private`; `.htaccess` private memblokir akses pada Apache/LiteSpeed. Pilihan pertama di luar `public_html` lebih baik. Jika hosting tidak mengizinkan mengubah document root/menempatkan private dengan susunan ini, minta dukungan hosting menyesuaikannya sebelum memasang.
 
@@ -91,7 +91,7 @@ Token muncul **sekali** saat dibuat. Simpan tiap token secara terpisah untuk kom
 
 Pada masing-masing komputer:
 
-1. Ekstrak `fasih-cawi-link-exporter-v0.2.3.zip` ke folder permanen.
+1. Ekstrak `fasih-cawi-link-exporter-v0.2.4.zip` ke folder permanen.
 2. Buka `chrome://extensions`, aktifkan Developer mode, klik **Load unpacked**, pilih folder yang langsung berisi `manifest.json`.
 3. Untuk memperbarui instalasi lama, gunakan folder pemasangan yang sama, klik **Reload**, lalu refresh FASIH. Pertahankan origin ekstensi agar progres lokal tersimpan.
 4. Login FASIH seperti biasa. Buka URL proyek, **view=list**, 100 kartu, filter/pencarian/urutan yang sama.
@@ -140,7 +140,7 @@ Di **Data & hasil**, gunakan **Unduh Excel gabungan** untuk seluruh hasil proyek
 
 **Reset data pusat** menghapus inventaris/hasil/riwayat proyek setelah nama proyek diketik sebagai konfirmasi. Token komputer tetap ada. Hentikan semua komputer, sinkronkan hasil lokal, tunggu kunci berakhir; reset ditolak jika kunci masih aktif. Reset menambah generasi proyek, sehingga job lama tidak bisa melanjutkan ke generasi baru. Reset lokal pada komputer sebelum inventaris/proses baru.
 
-Lakukan backup database melalui cPanel sebelum reset pusat atau pembaruan. Saat memperbarui file server, jangan menimpa `private/config.php`. Tabel versi 0.2.3 dipasang lewat installer pada database kosong; tidak ada migrasi dari backend server versi lain.
+Lakukan backup database melalui cPanel sebelum reset pusat atau pembaruan. Saat memperbarui file server, jangan menimpa `private/config.php`. Tabel versi 0.2.4 dipasang lewat installer pada database kosong; tidak ada migrasi dari backend server versi lain.
 
 ## 8. Bila ada kendala
 

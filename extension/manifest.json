@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FULX — FASIH Unique Link eXtractor",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Ekstrak unique link OPEN/CAWI dari list, bagi tugas antar komputer melalui server FULX, dan ekspor Excel.",
   "host_permissions": [
     "https://fasih-sm.bps.go.id/*",
