@@ -9,6 +9,7 @@ Ekstraksi assignment **OPEN yang sudah CAWI**, pada **view=list**. Perubahan mod
 - `dist/fasih-cawi-link-exporter-v0.2.1.zip` — ekstensi siap Load unpacked setelah diekstrak.
 - `dist/fulx-cpanel-server-v0.2.1.zip` — dashboard dan backend untuk **fulx.pinnhost.my.id**.
 - [INSTALL.md](INSTALL.md) — panduan cPanel, database, 5 token komputer, pemulihan, dan ekspor.
+- [DEPLOY_CPANEL_GIT.md](DEPLOY_CPANEL_GIT.md) — pemasangan lewat Terminal cPanel dengan git clone, pembaruan git pull, backup konfigurasi, dan rollback.
 
 Versi ZIP lama dipertahankan. Paket server tidak berisi credential, hasil pengguna, runtime pengembang, atau database simulasi.
 
