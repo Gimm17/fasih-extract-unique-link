@@ -13,6 +13,16 @@ if(fs.existsSync(target)) {
   if(!fs.readFileSync(target).equals(bytes))throw new Error(`ZIP v${version} sudah ada dengan isi berbeda. Naikkan versi sebelum mengemas pembaruan.`);
 } else fs.writeFileSync(target,bytes,{flag:'wx'});
 console.log(target);
+// Publish the same extension archive through the dashboard on every release.
+const publicDir=path.join(root,'server/public'),downloadsDir=path.join(publicDir,'downloads');
+fs.mkdirSync(downloadsDir,{recursive:true});
+fs.copyFileSync(target,path.join(downloadsDir,path.basename(target)));
+const indexPath=path.join(publicDir,'index.html');
+let index=fs.readFileSync(indexPath,'utf8');
+if(!index.includes('id="downloadExtension"'))throw new Error('Tombol unduh ekstensi tidak ditemukan di dashboard.');
+index=index.replace(/<a id="downloadExtension"[^>]*>[^<]*<\/a>/,
+  `<a id="downloadExtension" class="button-link primary" href="downloads/${path.basename(target)}" download>Unduh ekstensi v${version} (ZIP)</a>`);
+fs.writeFileSync(indexPath,index);
 // Dashboard uses the same local XLSX writer, never a CDN dependency.
 for(const file of ['core.js','xlsx.js'])fs.copyFileSync(path.join(dir,file),path.join(root,'server/public/assets',file));
 const serverFiles=[];
