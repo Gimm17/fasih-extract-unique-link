@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "FULX — FASIH Unique Link eXtractor",
-  "version": "0.3.7",
-  "description": "Ekstrak unique link OPEN/CAWI dari list, bagi tugas antar komputer melalui server FULX, dan ekspor Excel.",
+  "version": "0.4.0",
+  "description": "Ekstrak link OPEN/CAWI dari daftar Kode Identitas Excel/tempel atau filter wilayah, dan ekspor hasil Excel.",
   "host_permissions": [
     "https://fasih-sm.bps.go.id/*",
     "https://fulx.pinnhost.my.id/*"
@@ -23,8 +23,10 @@
       ],
       "js": [
         "core.js",
+        "identity-input.js",
         "adapter.js",
         "runner.js",
+        "identity-runner.js",
         "server-runner.js",
         "territory-adapter.js",
         "territory-runner.js",

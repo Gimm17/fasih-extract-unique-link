@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),path=require('node:path'),fs=require('node:fs');
 const F=require('../extension/core.js'),{fields,card,dialog}=require('./fixtures.cjs');
-const exe='C:/Program Files/Google/Chrome/Application/chrome.exe',playwright='C:/Users/BPSAdmin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright';
-test('real browser: full panel discovers nested territory dropdowns, inventories empty branches, then filters again to extract links',{skip:!fs.existsSync(exe),timeout:45000},async()=>{
+const exe=process.env.FASIH_CHROME||'C:/Program Files/Google/Chrome/Application/chrome.exe',playwright=process.env.FASIH_PLAYWRIGHT||'C:/Users/BPSAdmin/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright';
+test('real browser: full panel discovers nested territory dropdowns, inventories empty branches, then filters again to extract links',{skip:!fs.existsSync(exe)||!fs.existsSync(playwright),timeout:45000},async()=>{
  const browser=await require(playwright).chromium.launch({executablePath:exe,headless:true}),page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  const url='https://fasih-sm.bps.go.id/app/surveys/browser-territory/period/data?page=1&perPage=100&view=list',campaign={id:'campaign',sourceUrl:url,generation:1,inventoryMode:'TERRITORY',prefix:'7271',name:'Kota Palu',linkHost:'esurvey.bps.go.id',state:'CREATED',filterStamp:null},worker={id:'worker',name:'PC Uji',role:'COORDINATOR'};
  let job=null,partitions=[],records=new Map(),claimed=new Set();const local=new Map();

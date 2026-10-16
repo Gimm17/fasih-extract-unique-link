@@ -8,16 +8,25 @@
   host.style.cssText='position:fixed;right:16px;top:126px;z-index:2147483646;font:14px system-ui;color:#183042;pointer-events:auto;';
   const shadow=host.attachShadow({mode:'closed'});
   shadow.innerHTML=`<style>
-    *{box-sizing:border-box}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #cbd5e1;border-radius:7px;padding:9px;background:white;color:#183042}button:disabled{opacity:.45;cursor:default}.primary{background:#ee7918;border-color:#ee7918;color:white;font-weight:650}.panel{width:360px;max-height:calc(100vh - 150px);overflow:auto;background:#fff;border:1px solid #ccd7e0;border-radius:12px;box-shadow:0 8px 35px #16314630}.head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#fff3e8;border-bottom:1px solid #e2e8f0}.head strong{font-size:16px}.body{padding:16px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:12px;font-weight:650}input,select{padding:8px;border:1px solid #ccd7e0;border-radius:6px;width:100%;background:white;color:#183042}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.muted{font-size:12px;line-height:1.5;color:#526b7c}.notice{font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border:1px solid #e2e8f0;background:#f7fafc;padding:10px;border-radius:7px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.stat{padding:8px;background:#f1f6fa;border-radius:6px;font-size:11px}.stat b{display:block;font-size:19px;color:#244a64}.hidden{display:none}.mini{box-shadow:0 4px 15px #16314620;background:#fff3e8}.meter{height:6px;background:#edf2f6;border-radius:6px;overflow:hidden}.meter div{height:100%;background:#ee7918;width:0}a{color:#244a64}
+    *{box-sizing:border-box}button,input,select{font:inherit}button{cursor:pointer;border:1px solid #cbd5e1;border-radius:7px;padding:9px;background:white;color:#183042}button:disabled{opacity:.45;cursor:default}.primary{background:#ee7918;border-color:#ee7918;color:white;font-weight:650}.panel{width:min(360px,calc(100vw - 32px));max-height:calc(100vh - 150px);overflow:auto;background:#fff;border:1px solid #ccd7e0;border-radius:12px;box-shadow:0 8px 35px #16314630}.head{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#fff3e8;border-bottom:1px solid #e2e8f0}.head strong{font-size:16px}.body{padding:16px;display:grid;gap:12px}label{display:grid;gap:5px;font-size:12px;font-weight:650}input,select{padding:8px;border:1px solid #ccd7e0;border-radius:6px;width:100%;background:white;color:#183042}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.muted{font-size:12px;line-height:1.5;color:#526b7c}.notice{font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;border:1px solid #e2e8f0;background:#f7fafc;padding:10px;border-radius:7px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.stat{padding:8px;background:#f1f6fa;border-radius:6px;font-size:11px}.stat b{display:block;font-size:19px;color:#244a64}.hidden{display:none}.mini{box-shadow:0 4px 15px #16314620;background:#fff3e8}.meter{height:6px;background:#edf2f6;border-radius:6px;overflow:hidden}.meter div{height:100%;background:#ee7918;width:0}a{color:#244a64}
     .working{width:280px}.working .body{padding:10px;gap:8px}.working .body>*{display:none}.working .body>#state,.working .body>#notice,.working .body>#reset,.working .body>#resetConfirm:not(.hidden){display:block}.working .body>#controls,.working .body>.stats{display:grid}.working .head{padding:10px}.working .head strong{font-size:13px}
-  </style><button class="mini hidden" id="mini">FULX · v0.3.7</button><section class="panel" id="panel">
-    <div class="head"><strong>FULX · v0.3.7</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
+    textarea{font:12px ui-monospace,Consolas,monospace;width:100%;resize:vertical;min-height:110px;padding:8px;border:1px solid #ccd7e0;border-radius:6px;color:#183042;background:#f7fafc}details{border:1px solid #ccd7e0;border-radius:7px;padding:10px}summary{cursor:pointer;font-weight:650}details>div{display:grid;gap:10px;margin-top:10px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid #ee7918;outline-offset:2px}
+  </style><button class="mini hidden" id="mini">FULX · v0.4.0</button><section class="panel" id="panel">
+    <div class="head"><strong>FULX · v0.4.0</strong><button id="hide" aria-label="Sembunyikan panel">−</button></div>
     <div class="body"><div class="notice" id="notice" role="status" aria-live="polite">Mulai dengan Cek data halaman. Untuk mode server, buka URL proyek lalu jalankan Inventaris ke server dari komputer Koordinator.</div><div class="muted">LIST · ekstrak unique link · hanya OPEN dan CAWI<br>Kolom opsional yang tidak tampil boleh kosong.</div>
     <label>Wilayah<select id="region"><option value="Palu">Kota Palu</option><option value="Sulteng">Seluruh Sulawesi Tengah</option></select></label>
     <div class="row"><label>Awalan kode wilayah<input id="prefix" value="7271" inputmode="numeric" maxlength="16"></label><label>Domain link survei<input id="linkHost" value="esurvey.bps.go.id"></label></div>
     <div class="muted">Mode server wilayah memilih Kota Palu → kecamatan → desa otomatis. Awalan kode memeriksa bahwa setiap baris masih berada dalam cakupan.</div>
     <div class="row"><label>Jeda aksi (detik)<input id="actionDelay" type="number" min="0.05" max="60" step="0.05" value="0.50"></label><label>Jeda antar data (detik)<input id="nextDelay" type="number" min="0" max="300" step="0.05" value="1.00"></label></div>
     <button id="saveTiming">Simpan jeda</button><div class="muted">Jeda sebelum aksi/pembacaan URL. Jika FASIH belum siap, waktu tunggu bisa lebih lama. Atur saat proses berhenti; berlaku saat mulai/lanjut/ulang gagal.</div>
+    <details id="identitySection" open><summary>Daftar Kode Identitas</summary><div>
+    <div class="muted" id="identityHelp">Cari satu kode lengkap, ambil link, lalu lanjut ke kode berikutnya. Mode lokal; gunakan filter FASIH yang mencakup seluruh daftar. Maksimal 10.000 kode.</div>
+    <label>Unggah Excel (.xlsx, maksimal 10 MB)<input id="identityFile" type="file" accept=".xlsx" aria-describedby="identityHelp"></label>
+    <label class="hidden" id="identitySheetLabel">Sheet Excel<select id="identitySheet"></select></label>
+    <label>Atau tempel kode, satu per baris<textarea id="identityCodes" rows="5" spellcheck="false" placeholder="Kode Identitas&#10;7271000000000000 - EC - 1 - 1047&#10;7271000000000000 - EC - 1 - 1113" aria-describedby="identityStatus"></textarea></label>
+    <div class="muted" id="identityStatus" role="status" aria-live="polite">Excel harus memiliki kolom Kode Identitas. Hanya kolom tersebut yang dibaca.</div>
+    <button class="primary" id="identityStart">Mulai daftar kode</button>
+    </div></details>
     <div class="notice" id="serverState">Mode lokal · server belum dihubungkan.</div>
     <div class="row"><button id="serverConfig">Pengaturan server</button><button id="serverOpenProject">Buka URL proyek</button></div><div class="row"><button id="serverInventory">Inventaris ke server</button><button id="serverStart" class="primary">Mulai tugas server</button></div><button id="serverSync">Sinkronkan hasil tertunda</button>
     <div class="muted">Mode wilayah: server membagi desa antar komputer. Inventaris dan ekstraksi mengganti filter FASIH otomatis. Mode lokal di bawah hanya tersedia saat server tidak terhubung.</div>
@@ -55,10 +64,12 @@
     if(job.notice) show(job.notice+(lastFailure&&!job.notice.includes(lastFailure)?'\nKegagalan terakhir: '+lastFailure:''));
     else show(activity||(job.phase==='INVENTORY'?`Mengambil kartu list. Halaman ${F.context(location.href).page}.`:`Mengambil unique link halaman ${F.context(location.href).page}.`));
     const active=runner.running||busy||resetting;
-    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverOpenProject','serverSync']) $(id).disabled=active;
+    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverOpenProject','serverSync','identityFile','identitySheet','identityCodes','identityStart']) $(id).disabled=active;
     $('export').disabled=!job;
   }
-  const runner=new (F.TerritoryRunner||F.ServerRunner||F.Runner)(adapter,send,update);
+  let runner;
+  function selectRunner(job){const Type=job?.options.identityList?F.IdentityRunner:(F.TerritoryRunner||F.ServerRunner||F.Runner);if(!Type)throw new Error('Reload ekstensi dan refresh FASIH untuk memuat fitur daftar kode.');runner=new Type(adapter,send,update);}
+  selectRunner();
   function prefixValue() {
     const prefix=$('prefix').value.trim();
     if(!/^\d{2,16}$/.test(prefix)) throw new Error('Isi awalan kode wilayah, minimal 2 digit.');
@@ -93,6 +104,7 @@
     }
     await send({type:'SET_SETTINGS',settings:F.timings(opts)});
     const job=await send({type:'CREATE',options:opts});
+    selectRunner(job);
     await runner.start(job);
   }
   async function resume(retry=false) {
@@ -103,20 +115,45 @@
     await send({type:'SET_SETTINGS',settings:timing});
     let job=await send({type:'CLAIM',id:data.job.id});
     job=await send({type:'PATCH',id:job.id,patch:{options:{...job.options,...timing}}});
+    selectRunner(job);
     await runner.resume(job,data.rows,retry);
   }
   function run(action, feedback=show) { return async()=> {
     if(busy||resetting) return; busy=true;
-    for(const id of ['serverInventory','serverStart','serverOpenProject'])$(id).disabled=true;
+    for(const id of ['serverInventory','serverStart','serverOpenProject','identityFile','identitySheet','identityCodes','identityStart'])$(id).disabled=true;
     let error='';
     try { await action(); } catch(e) { error=e.message; }
     finally {
       busy=false;
       if(loaded) update({job:loaded.job,counts:F.totals(loaded.rows)});
-      else for(const id of ['serverInventory','serverStart','serverOpenProject'])$(id).disabled=runner.running||resetting;
+      else for(const id of ['serverInventory','serverStart','serverOpenProject','identityFile','identitySheet','identityCodes','identityStart'])$(id).disabled=runner.running||resetting;
       if(error){feedback(error);if(feedback===show)$('notice').scrollIntoView?.({block:'nearest'});}
     }
   }; }
+  let identityBook=null;
+  const identityFeedback=value=>$('identityStatus').textContent=value;
+  async function loadIdentitySheet(){
+    $('identityCodes').value='';const parsed=await identityBook.identities(Number($('identitySheet').value));
+    $('identityCodes').value=parsed.codes.join('\n');identityFeedback(parsed.sheet+': '+parsed.codes.length+' kode unik siap · '+parsed.duplicates+' duplikat dihapus.');
+  }
+  $('identityFile').onchange=run(async()=>{
+    identityBook=null;$('identityCodes').value='';$('identitySheet').replaceChildren();$('identitySheetLabel').classList.add('hidden');
+    const file=$('identityFile').files[0];if(!file)return;
+    if(!/\.xlsx$/i.test(file.name)||file.size>10*1024*1024)throw new Error('Unggah Excel .xlsx maksimal 10 MB. Untuk .xls, simpan sebagai .xlsx dahulu.');
+    identityFeedback('Membaca Excel…');identityBook=await F.readIdentityWorkbook(await file.arrayBuffer());
+    identityBook.sheets.forEach((name,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=name;$('identitySheet').append(option);});
+    $('identitySheetLabel').classList.toggle('hidden',identityBook.sheets.length<2);await loadIdentitySheet();
+  },identityFeedback);
+  $('identitySheet').onchange=run(loadIdentitySheet,identityFeedback);
+  $('identityCodes').oninput=()=>{
+    try{const parsed=F.parseIdentityList($('identityCodes').value);identityFeedback(parsed.codes.length+' kode unik · '+parsed.duplicates+' duplikat akan dilewati.');}catch(e){identityFeedback(e.message);}
+  };
+  $('identityStart').onclick=run(async()=>{
+    const parsed=F.parseIdentityList($('identityCodes').value),opts={...options(false),identityList:parsed.codes};
+    if((await send({type:'GET_SERVER_SETTINGS'}))?.configured)throw new Error('Daftar kode memakai mode lokal. Hentikan tugas server, sinkronkan hasil, lalu putuskan koneksi melalui Pengaturan server dahulu.');
+    await send({type:'SET_SETTINGS',settings:F.timings(opts)});
+    const job=await send({type:'CREATE',options:opts});selectRunner(job);await runner.start(job, (await send({type:'READ',id:job.id})).rows);
+  });
   $('region').onchange=()=>{$('prefix').value=$('region').value==='Palu'?'7271':'72';};
   $('diagnose').onclick=run(async()=> {
     showDiagnostic('Memeriksa data halaman…');
@@ -149,10 +186,10 @@
       let job=await send({type:'CLAIM',id:old.id});
       job=await send({type:'PATCH',id:old.id,patch:{context:F.context(location.href),options:opts,navigating:null,notice:''}});
       await send({type:'SET_SETTINGS',settings:F.timings(opts)});
-      await runner.resume(job,prior.rows);return;
+      selectRunner(job);await runner.resume(job,prior.rows);return;
     }
     await send({type:'SET_SETTINGS',settings:F.timings(opts)});
-    const job=await send({type:'CREATE',options:opts});await runner.start(job);
+    const job=await send({type:'CREATE',options:opts});selectRunner(job);await runner.start(job);
   }
   $('serverInventory').onclick=run(()=>launchServer('INVENTORY'));$('serverStart').onclick=run(()=>launchServer('WORK'));
   $('serverOpenProject').onclick=run(async()=>{
@@ -177,8 +214,9 @@
     for(const id of ['total','done','error'])$(id).textContent='0';
     $('bar').style.width='0%';$('state').textContent='Belum ada proses.';
     $('diagnostics').textContent='';$('diagnostics').classList.add('hidden');$('resetConfirm').classList.add('hidden');
+    identityBook=null;$('identityCodes').value='';$('identityFile').value='';$('identitySheet').replaceChildren();$('identitySheetLabel').classList.add('hidden');identityFeedback('Excel harus memiliki kolom Kode Identitas. Hanya kolom tersebut yang dibaca.');
     $('panel').classList.remove('working');host.style.right='16px';host.style.left='auto';host.style.top='126px';
-    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverOpenProject','serverSync'])$(id).disabled=false;
+    for(const id of ['pilot','all','resume','retry','region','prefix','linkHost','diagnose','actionDelay','nextDelay','saveTiming','serverConfig','serverInventory','serverStart','serverOpenProject','serverSync','identityFile','identitySheet','identityCodes','identityStart'])$(id).disabled=false;
     $('serverState').textContent='Mode lokal · server belum dihubungkan.';
     $('export').disabled=true;show('Reset full selesai. Semua data lokal dihapus; jeda kembali ke 0,50 dan 1,00 detik.');
   }
@@ -213,7 +251,8 @@
       const data=await readLatest(); if(!data){restoreTiming(settings||{});$('export').disabled=true;return;}
       loaded=data; restoreOptions(data.job);
       restoreTiming(settings||data.job.options);
-      runner.job=data.job; runner.records=new Map(data.rows.map(r=>[r.key,r]));
+      selectRunner(data.job);runner.job=data.job; runner.records=new Map(data.rows.map(r=>[r.key,r]));
+      if(data.job.options.identityList){$('identityCodes').value=data.job.options.identityList.join('\n');identityFeedback(data.job.options.identityList.length+' target tersimpan. Gunakan Lanjutkan/Coba ulang gagal untuk progres ini.');}
       update({job:data.job,counts:F.totals(data.rows)});
       const nav=data.job.navigating;
       if(data.owned && data.job.status==='RUNNING' && nav?.url===location.href && Date.now()-nav.at<120000) {

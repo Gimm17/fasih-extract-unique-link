@@ -15,7 +15,7 @@ async function refreshData() {
     data=null;for(const name of ['xlsx','json'])document.getElementById(name).disabled=true;
     throw new Error(result?.error||'Hasil tidak tersedia. Progres mungkin sudah dihapus lewat Reset full.');
   }
-  data=result.value;data.rows.sort((a,b)=>a.page-b.page || a.key.localeCompare(b.key));
+  data=result.value;data.rows.sort((a,b)=>data.job.options.identityList?a.inputOrder-b.inputOrder:a.page-b.page || a.key.localeCompare(b.key));
 }
 document.getElementById('xlsx').onclick=async()=> {
   try {

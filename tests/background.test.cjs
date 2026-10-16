@@ -37,6 +37,15 @@ test('service-worker bridge persists results, scopes access and prevents competi
   assert.equal((await call({type:'LATEST'})).value,undefined);
   assert.equal((await call({type:'GET_SETTINGS'})).value,undefined);
   assert.equal((await call({type:'READ',id},exportSender)).value.rows.length,0);
+  const list=[fields()['Kode Identitas'],'7271000000000000 - EC - 1 - 1113'];
+  const queued=await call({type:'CREATE',options:{identityList:list,prefix:'7271'}});
+  assert.equal(queued.ok,true);assert.equal(queued.value.phase,'PROCESS');
+  const targets=await call({type:'READ',id:queued.value.id});
+  assert.equal(targets.value.rows.length,2);assert.equal(targets.value.rows.find(r=>r.fields['Kode Identitas']===list[1]).inputOrder,2);
+  assert.equal(targets.value.rows.every(r=>r.result==='PENDING'),true);
+  await call({type:'PATCH',id:queued.value.id,patch:{status:'STOPPED'}});
+  assert.equal((await call({type:'CREATE',options:{identityList:['bad'],prefix:'7271'}})).ok,false);
+  assert.equal((await call({type:'CREATE',options:{identityList:[list[0]],prefix:'99'}})).ok,false);
 });
 
 test('new job captures the current SPA tab URL rather than stale message sender query and blocks changed survey scope',async()=>{

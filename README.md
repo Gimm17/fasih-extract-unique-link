@@ -1,6 +1,6 @@
 # FULX — FASIH Unique Link eXtractor
 
-**v0.3.7** · ekstensi Chrome + server PHP/MySQL + dashboard untuk 5 komputer.
+**v0.4.0** · ekstensi Chrome + server PHP/MySQL + dashboard untuk 5 komputer.
 
 Ekstraksi assignment **OPEN yang sudah CAWI**, pada **view=list**. Perubahan mode, pengiriman email/pesan, dan save mode tidak dijalankan. Kolom opsional yang tidak tampil boleh kosong. Default jeda aksi 0,50 detik; antar data 1 detik, bisa diatur melalui panel.
 
@@ -12,8 +12,8 @@ Menu **Dokumentasi** pada sidebar dashboard memuat panduan lengkap mode lokal/se
 
 ## Paket distribusi
 
-- `dist/fasih-cawi-link-exporter-v0.3.7.zip` — ekstensi siap Load unpacked setelah diekstrak.
-- `dist/fulx-cpanel-server-v0.3.7.zip` — dashboard dan backend untuk **fulx.pinnhost.my.id**.
+- `dist/fasih-cawi-link-exporter-v0.4.0.zip` — ekstensi siap Load unpacked setelah diekstrak.
+- `dist/fulx-cpanel-server-v0.4.0.zip` — dashboard dan backend untuk **fulx.pinnhost.my.id**.
 - [INSTALL.md](INSTALL.md) — panduan cPanel, database, 5 token komputer, pemulihan, dan ekspor.
 - [DEPLOY_CPANEL_GIT.md](DEPLOY_CPANEL_GIT.md) — pemasangan lewat Terminal cPanel dengan git clone, pembaruan git pull, backup konfigurasi, dan rollback.
 
@@ -23,7 +23,7 @@ Versi ZIP lama dipertahankan. Paket server tidak berisi credential, hasil penggu
 
 1. Ekstrak ZIP ke folder permanen, atau gunakan folder `extension` proyek ini.
 2. Buka `chrome://extensions`, aktifkan Developer mode, pilih Load unpacked dan folder yang berisi manifest.json.
-3. Jika sudah terpasang, perbarui folder pemasangan yang sama, klik Reload, lalu refresh FASIH. Pastikan panel **FULX v0.3.7**.
+3. Jika sudah terpasang, perbarui folder pemasangan yang sama, klik Reload, lalu refresh FASIH. Pastikan panel **FULX v0.4.0**.
 4. Login FASIH, gunakan view=list dan 100 kartu per halaman. Filter, pencarian dan urutan data harus sesuai proyek.
 
 ## Pekerjaan bersama pada server
@@ -45,6 +45,17 @@ Identitas lengkap menjadi kunci per proyek. Paket dikunci secara atomik oleh ser
 
 ## Mode lokal
 
+### Daftar Kode Identitas (Excel atau tempel), baru di v0.4.0
+
+1. Putuskan koneksi server melalui Pengaturan server setelah tugas dihentikan dan hasil tertunda tersinkron. Buka survei/periode yang benar di FASIH.
+2. Atur filter FASIH agar mencakup semua target. Prefix panel hanya memvalidasi kode; tidak menghapus/mengganti filter wilayah.
+3. Buka **Daftar Kode Identitas**, unggah `.xlsx` dengan judul kolom **Kode Identitas** pada salah satu dari 20 baris pertama, lalu pilih sheet. Atau tempel satu kode lengkap per baris, misalnya `7271000000000000 - EC - 1 - 1047`. Judul kolom boleh ikut ditempel.
+4. Periksa daftar, prefix, serta jeda. Klik **Mulai daftar kode**. Setiap kode mengganti parameter `search` di URL pada halaman 1, `view=list`, dan 100 kartu per halaman. Query sebelumnya diganti seluruhnya. Hanya kartu dengan identitas lengkap yang sama boleh diekstrak. Jika hasil pencarian terdiri dari beberapa halaman, halaman berikutnya diperiksa sampai target ditemukan atau hasil habis. Hasil pencarian yang menyentuh batas 1.000 tanpa menemukan target menyebabkan jeda untuk pemeriksaan.
+5. **Jeda/Lanjutkan** mempertahankan progres; **Coba ulang gagal** mengaktifkan ERROR tanpa mengulang DONE/SKIPPED. **Mulai daftar kode** membuat job baru, jadi ekspor hasil sebelumnya dahulu. Proses menunggu halaman kosong hingga batas waktu pemuatan sebelum mencatat kode tidak ditemukan, lalu melanjutkan target berikutnya.
+6. **Ekspor Excel / backup** menghasilkan seluruh target sesuai urutan daftar, termasuk kode yang tidak ditemukan, non-CAWI, atau bukan OPEN. Kolom **Urutan Daftar** membantu mencocokkan hasil dengan input. Hasil tetap lokal dan tidak dikirim/dibagi ke server.
+
+Unggah maksimal 10 MB dan 10.000 kode unik; duplikat dinormalisasi menggunakan identitas lengkap dan hanya diproses sekali. File `.xls` perlu disimpan sebagai `.xlsx`; sel identitas harus berupa teks, bukan rumus. Pilihan sheet dan kolom lain tidak mengubah data FASIH. Pembaca Excel berjalan lokal tanpa CDN. Biarkan tab aktif; navigasi terencana melanjutkan otomatis, reload manual membutuhkan **Lanjutkan**. Jika hasil tidak ditemukan, periksa filter dan akses akun sebelum retry. Format identitas tidak boleh terpotong.
+
 Mode lokal tersedia saat server tidak terhubung. Klik **Cek data halaman** untuk diagnosis, **Pilot 5 data** untuk pemeriksaan alur popup, atau **Mulai seluruh data pada filter** untuk inventaris seluruh halaman dan ekstraksi. Pilot/Mulai membuat job baru; Lanjutkan/Coba ulang gagal memakai progres lama. Mode lokal pada komputer berbeda tidak disinkronkan.
 
 Alur: **titik tiga → Pengaturan Email → Dapatkan Unique Link jika diperlukan → baca URL lengkap → simpan → tutup popup**. URL dibaca langsung dari DOM, sehingga klik Copy/clipboard tidak diperlukan. Jika mode ternyata belum CAWI, hasil gagal dicatat; mode tidak diubah.
@@ -64,6 +75,6 @@ node scripts/package.cjs
 
 Tes PHP/MySQL memerlukan runtime lokal dan database fixture khusus. Pada workspace Windows ini `node scripts/start-test-server.cjs` menyalakan PHP/MariaDB portable dari `.tools` di loopback port 9079/3319. Tes integrasi hanya menghapus database fixture `fulx_test` pada port 3319, tidak boleh diarahkan ke produksi. Semua data browser/API fiktif; browser fixture FASIH tidak menghubungi situs produksi.
 
-Paket 0.3.7 diuji dengan PHP 8.5.11/MariaDB 10.11.14 lokal; kode PHP kompatibel dengan fitur PHP 8.3. Pemasangan cPanel dan ekstraksi data FASIH produksi belum dilakukan. Ringkasan teknis/riwayat: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
+Paket 0.4.0 diuji dengan PHP 8.5.11/MariaDB 10.11.14 lokal; kode PHP kompatibel dengan fitur PHP 8.3. Pemasangan cPanel dan ekstraksi data FASIH produksi belum dilakukan. Ringkasan teknis/riwayat: [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md).
 
 Tombol **Unduh ekstensi (ZIP)** pada header dashboard menyediakan versi yang dibundel dengan server. Setiap `node scripts/package.cjs` menyalin ZIP versi saat ini ke `server/public/downloads` dan memperbarui tombol. Deploy seluruh hasil commit dengan `git pull --ff-only` agar tombol dan ZIP tetap sesuai.

@@ -1,5 +1,5 @@
 'use strict';
-importScripts('core.js', 'storage.js', 'remote.js');
+importScripts('core.js', 'identity-input.js', 'storage.js', 'remote.js');
 let queue = Promise.resolve();
 function isFasih(sender) {
   try { return sender.id === chrome.runtime.id && Boolean(sender.tab) && Boolean(Fasih.context(sender.url)); }
@@ -58,6 +58,12 @@ async function handle(msg, sender) {
   if (msg.type === 'CREATE') {
     if(await FasihStore.metaGet('server')&&!msg.options?.server)throw new Error('Server terhubung. Gunakan Mulai tugas server agar pembagian pekerjaan tetap terkontrol.');
     const timing=Fasih.timings(msg.options);
+    let identities=null;
+    if(msg.options?.identityList!==undefined){
+      if(msg.options.server||!Array.isArray(msg.options.identityList))throw new Error('Daftar kode memakai mode lokal tanpa server.');
+      identities=Fasih.parseIdentityList(msg.options.identityList.join('\n')).codes;
+      if(!/^\d{2,16}$/.test(msg.options.prefix||'')||identities.some(code=>!code.startsWith(msg.options.prefix)))throw new Error('Ada Kode Identitas di luar awalan kode wilayah. Periksa daftar/prefix dahulu.');
+    }
     const priorId = await FasihStore.latest(ctx.scope);
     const prior = priorId && await FasihStore.getJob(priorId);
     if (prior?.status === 'RUNNING') throw new Error('Proses sebelumnya masih berjalan. Jeda/hentikan dahulu.');
@@ -69,7 +75,9 @@ async function handle(msg, sender) {
     const job = { id: crypto.randomUUID(), context: Fasih.context(startUrl.href), options: {...msg.options,...timing},
       status: 'RUNNING', phase: 'INVENTORY', owner: sender.tab.id, createdAt: new Date().toISOString(),
       pages: {}, visitPages: [], processPages: [], attempted: [], notice: '', navigating: null };
-    return FasihStore.create(job);
+    const records=identities?identities.map((code,i)=>({key:Fasih.key(code),fields:{'Kode Identitas':code,'Urutan Daftar':String(i+1)},inputOrder:i+1,initialMode:'',stage:'MENUNGGU_PENCARIAN',result:'PENDING',attempts:0})):[];
+    if(identities){job.options={...job.options,identityList:identities,pilot:false};job.phase='PROCESS';job.targetCursor=0;job.inventoryComplete=true;}
+    return FasihStore.create(job,records);
   }
   if (msg.type === 'EXPORT') {
     await chrome.tabs.create({ url: chrome.runtime.getURL('export.html') + '?job=' + encodeURIComponent(msg.id) });

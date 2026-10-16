@@ -41,9 +41,10 @@
   const setSettings = value => txn(['meta'],'readwrite',(t,s)=>{t.objectStore('meta').put(value,'settings');s(value);});
   const allJobs = () => txn(['jobs'],'readonly',(t,s)=>request(t.objectStore('jobs').getAll(),s));
   const reset = () => txn(['jobs','rows','meta'],'readwrite',(t,s)=>{for(const name of ['jobs','rows','meta'])t.objectStore(name).clear();s(true);});
-  async function create(job) {
-    return txn(['jobs', 'meta'], 'readwrite', (t, set) => {
-      t.objectStore('jobs').add(job); t.objectStore('meta').put(job.id, job.context.scope); set(job);
+  async function create(job, rows=[]) {
+    return txn(['jobs', 'meta', 'rows'], 'readwrite', (t, set) => {
+      t.objectStore('jobs').add(job); t.objectStore('meta').put(job.id, job.context.scope);
+      for(const row of rows)t.objectStore('rows').add({...row,jobId:job.id});set(job);
     });
   }
   async function patchJob(id, patch) {
