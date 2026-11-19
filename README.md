@@ -2,7 +2,7 @@
 
 **v0.4.0** · Ekstensi Chrome Manifest V3 + server koordinator PHP 8.3/MySQL untuk mengekstrak link unik CAWI dari FASIH di **hingga 5 komputer secara paralel**.
 
-🔗 **Dashboard Live:** [`https://fulx.pinnhost.my.id/`](https://fulx.pinnhost.my.id/) · [Panduan Instalasi](INSTALL.md) · [Deploy cPanel Git](DEPLOY_CPANEL_GIT.md)
+🔗 **Dashboard Live:** [`https://fulx.pinnhost.my.id/`](https://fulx.pinnhost.my.id/) · [Panduan Instalasi](INSTALL.md)
 
 <table>
   <tr>
